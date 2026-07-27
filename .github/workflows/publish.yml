@@ -13,27 +13,17 @@ jobs:
   publish:
     name: Publish package
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+      - uses: ./.github/actions/node-setup
         with:
-          run_install: false
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
           registry-url: 'https://npm.pkg.github.com'
           scope: '@studnicky'
-          cache: pnpm
-
-      - name: Install
-        run: pnpm install --frozen-lockfile
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
