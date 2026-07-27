@@ -1,0 +1,11 @@
+# Mnemotek
+
+Mnemotek lets TypeScript teams define an agent command once in literal JSON Schema, validate it at the boundary, and generate a CLI, MCP tool, skill manifest, and slash command. It prevents interface drift while giving humans and agents the surface they prefer. The documentation includes a live browser demo of one `inspect` command rendered four ways.
+
+- Source: https://github.com/Studnicky/mnemotek
+- Documentation: https://studnicky.github.io/mnemotek/
+- Schema source of truth: literal JSON Schema (`as const satisfies JSONSchema`)
+- Derived types: `FromSchema<typeof Schema>` from `json-schema-to-ts`
+- Runtime validation: AJV through `@studnicky/json` `SchemaValidator`
+- Configuration precedence: schema defaults → package config → JSON config → environment → CLI
+- Runtime dependencies: Commander, Enquirer, `@studnicky/json`

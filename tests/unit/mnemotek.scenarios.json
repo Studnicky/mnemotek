@@ -1,0 +1,296 @@
+{
+  "manifest": [
+    {
+      "name": "includes-manifest-runner-and-schema",
+      "shape": "manifest",
+      "expected": {
+        "name": "mnemotek",
+        "description": "CLI and config flow coverage.",
+        "commands": [
+          {
+            "name": "inspect",
+            "description": "Inspect command with defaults.",
+            "hasRunner": true,
+            "hasResultSchema": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "exposes-undefined-runner",
+      "shape": "manifest",
+      "expected": {
+        "name": "mnemotek",
+        "description": "Runner visibility test.",
+        "commands": [
+          {
+            "name": "dry-run",
+            "description": "Dry-run command.",
+            "hasResultSchema": false,
+            "hasRunner": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "exposes-result-schema",
+      "shape": "manifest",
+      "expected": {
+        "name": "mnemotek",
+        "description": "Result schema manifesting.",
+        "commands": [
+          {
+            "name": "inspect",
+            "description": "Inspect with result contract.",
+            "hasResultSchema": true,
+            "hasRunner": true
+          }
+        ]
+      }
+    }
+  ],
+  "configuration": [
+    {
+      "name": "merges-defaults-package-file-env-and-cli",
+      "shape": "configuration",
+      "input": {
+        "appName": "mnemotek",
+        "commandName": "inspect",
+        "schemaKey": "configuration-basics",
+        "packageJson": {
+          "name": "mnemotek",
+          "mnemotek": {
+            "inspect": {
+              "message": "from-package",
+              "count": 40,
+              "limits": {
+                "attempts": 11
+              }
+            }
+          }
+        },
+        "autoConfig": {
+          "inspect": {
+            "message": "from-file",
+            "count": 100,
+            "limits": {
+              "attempts": 9
+            }
+          }
+        },
+        "envContent": "MNEMOTEK_INSPECT_MESSAGE=from-env\nMNEMOTEK_INSPECT_LIMITS_ATTEMPTS=19\nMNEMOTEK_INSPECT_TOKEN=env-token\n",
+        "envOverrides": {
+          "MNEMOTEK_INSPECT_MESSAGE": "from-process-env",
+          "MNEMOTEK_INSPECT_COUNT": "77"
+        },
+        "commandLineArguments": {
+          "count": 55,
+          "token": "cli-token"
+        },
+        "expected": {
+          "message": "from-process-env",
+          "count": 55,
+          "limits": {
+            "attempts": 19
+          },
+          "token": "cli-token"
+        }
+      }
+    },
+    {
+      "name": "uses-explicit-config-when-provided",
+      "shape": "configuration",
+      "input": {
+        "appName": "mnemotek",
+        "commandName": "inspect",
+        "schemaKey": "explicit-token",
+        "packageJson": {
+          "name": "mnemotek",
+          "mnemotek": {
+            "inspect": {
+              "level": 5,
+              "token": "pkg-token"
+            }
+          }
+        },
+        "autoConfig": {
+          "inspect": {
+            "level": 9,
+            "token": "auto-token"
+          }
+        },
+        "envContent": "MNEMOTEK_INSPECT_LEVEL=20\nMNEMOTEK_INSPECT_TOKEN=env-token\n",
+        "cliConfigPath": "custom.config.json",
+        "cliConfigContent": {
+          "inspect": {
+            "level": 41,
+            "token": "file-token"
+          }
+        },
+        "expected": {
+          "level": 20,
+          "token": "env-token"
+        }
+      }
+    }
+  ],
+  "cli": [
+    {
+      "name": "applies-defaults-through-cli-execution",
+      "shape": "cli",
+      "input": {
+        "argv": [
+          "node",
+          "mnemotek",
+          "inspect"
+        ],
+        "schemaKey": "cli-default",
+        "expectedStatus": 0,
+        "expectedMessage": "ok"
+      }
+    },
+    {
+      "name": "let-command-args-win-over-config-file",
+      "shape": "cli",
+      "input": {
+        "packageJson": {
+          "name": "mnemotek",
+          "mnemotek": {
+            "inspect": {
+              "message": "from-file"
+            }
+          }
+        },
+        "configFile": {
+          "inspect": {
+            "message": "from-command-file"
+          }
+        },
+        "schemaKey": "cli-override",
+        "argv": [
+          "node",
+          "mnemotek",
+          "inspect",
+          "--config",
+          "config.json",
+          "--message",
+          "from-cli"
+        ],
+        "expectedStatus": 0,
+        "expectedMessage": "from-cli"
+      }
+    }
+  ],
+  "cli-manifest": [
+    {
+      "name": "outputs-manifest-json",
+      "shape": "cli-manifest",
+      "input": {
+        "appName": "mnemotek",
+        "argv": [
+          "node",
+          "mnemotek",
+          "skill-manifest"
+        ],
+        "expectedStatus": 0,
+        "expectedOutputFragment": "\"mcpBin\": \"mnemotek-mcp\""
+      }
+    },
+    {
+      "name": "outputs-meta-manifest-json",
+      "shape": "cli-manifest",
+      "input": {
+        "appName": "mnemotek-meta",
+        "argv": [
+          "node",
+          "mnemotek",
+          "skill-manifest",
+          "--meta-only"
+        ],
+        "expectedStatus": 0,
+        "expectedOutputFragment": "\"mcpBin\": \"mnemotek-meta-mcp\""
+      }
+    }
+  ],
+  "interactive": [
+    {
+      "name": "prompts-for-missing-required-values",
+      "shape": "interactive",
+      "input": {
+        "schemaKey": "interactive-required",
+        "promptReply": {
+          "message": "generated at prompt",
+          "count": 9
+        },
+        "argv": [
+          "node",
+          "mnemotek",
+          "inspect",
+          "--interactive"
+        ],
+        "expectedStatus": 0,
+        "expectedMessage": "generated at prompt",
+        "expectedCount": 9
+      }
+    }
+  ],
+  "mcp": [
+    {
+      "name": "lists-tool-manifests",
+      "shape": "mcp",
+      "input": {
+        "schemaKey": "manifest-basic",
+        "shapeMode": "list",
+        "expectedLength": 1,
+        "expectedToolName": "inspect"
+      }
+    },
+    {
+      "name": "returns-output-through-call",
+      "shape": "mcp",
+      "input": {
+        "schemaKey": "mcp-call-args",
+        "toolName": "inspect",
+        "arguments": {
+          "message": "from-tool"
+        },
+        "expectedIsError": false,
+        "expectedToolText": "{\"message\":\"from-tool\"}"
+      }
+    },
+    {
+      "name": "returns-result-validation-error",
+      "shape": "mcp",
+      "input": {
+        "schemaKey": "mcp-call-args",
+        "expectedInvalidResult": true,
+        "toolName": "inspect",
+        "arguments": {
+          "message": "from-tool"
+        },
+        "expectedIsError": true,
+        "expectedToolErrorText": "Result validation failed for command 'inspect'."
+      }
+    }
+  ],
+  "skill-manifest": [
+    {
+      "name": "exposes-full-skill-manifest",
+      "shape": "skill-manifest",
+      "input": {
+        "appName": "mnemotek",
+        "metaOnly": false,
+        "expectedCommandCount": 1
+      }
+    },
+    {
+      "name": "exposes-meta-skill-manifest",
+      "shape": "skill-manifest",
+      "input": {
+        "appName": "mnemotek",
+        "metaOnly": true,
+        "expectedMetaName": "mnemotek"
+      }
+    }
+  ]
+}
