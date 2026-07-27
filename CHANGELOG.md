@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2
+
+### Patch Changes
+
+- [#5](https://github.com/Studnicky/mnemotek/pull/5) [`64db262`](https://github.com/Studnicky/mnemotek/commit/64db262a23b779a8c38f9458fdab4b1d5d06a2b7) Thanks [@Studnicky](https://github.com/Studnicky)! - Remove the redundant tag-triggered publish workflow (Release via Changesets is now the single publish path). Add local git hooks (`.githooks/pre-commit`, `.githooks/pre-push`) wired automatically via `pnpm install`'s `prepare` script: pre-commit blocks committing generated/local-only paths and lints staged files; pre-push blocks direct pushes to `main`/`develop`, checks branch naming, requires a changeset, and runs the full CI gate before every push.
+
 ## 0.1.1
 
 ### Patch Changes
