@@ -1,0 +1,31 @@
+#!/bin/sh
+set -e
+
+echo "Running pre-commit checks..."
+
+# Block committing generated/local-only paths even if force-added
+FORBIDDEN_STAGED=$(git diff --cached --name-only | grep -E '^(dist/|\.playwright-mcp/|\.codebase-memory/|\.claude/)' || true)
+if [ -n "$FORBIDDEN_STAGED" ]; then
+  echo "ERROR: staged files under a gitignored/generated path:"
+  echo "$FORBIDDEN_STAGED"
+  echo "These are build output or local tool state and must not be committed."
+  exit 1
+fi
+
+# Block obvious secret-shaped files
+SECRET_STAGED=$(git diff --cached --name-only | grep -iE '\.env($|\.)|credential|\.pem$' || true)
+if [ -n "$SECRET_STAGED" ]; then
+  echo "ERROR: staged file looks like a secret/credential file:"
+  echo "$SECRET_STAGED"
+  echo "If this is intentional, rename it or use git commit --no-verify."
+  exit 1
+fi
+
+STAGED_TS=$(git diff --cached --name-only --diff-filter=ACM -- '*.ts' '*.mjs' | tr '\n' ' ')
+if [ -n "$STAGED_TS" ]; then
+  echo "Linting staged files..."
+  pnpm exec eslint --max-warnings 0 $STAGED_TS
+fi
+
+echo "Pre-commit checks passed"
+exit 0
