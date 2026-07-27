@@ -1,0 +1,63 @@
+#!/bin/sh
+set -e
+
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+push_remote="${1:-origin}"
+
+# ============================================================================
+# Protected branch guard
+# ============================================================================
+# main/develop are also protected server-side (PR required, no force-push).
+# This local guard fails fast before the round-trip to GitHub.
+
+case "$current_branch" in
+  main|develop)
+    echo ""
+    echo "ERROR: direct push to '$current_branch' is not allowed."
+    echo "Open a pull request instead: feature branches -> develop, release/hotfix -> main."
+    exit 1
+    ;;
+esac
+
+# ============================================================================
+# Branch naming convention
+# ============================================================================
+
+case "$current_branch" in
+  feature/*|feat/*|fix/*|chore/*|ci/*|docs/*|release/*|hotfix/*|changeset-release/*) ;;
+  *)
+    echo ""
+    echo "WARNING: branch '$current_branch' doesn't match the naming convention"
+    echo "(feature/*, fix/*, chore/*, ci/*, docs/*, release/*, hotfix/*)."
+    echo "Pushing anyway — rename before opening a PR if this was unintentional."
+    ;;
+esac
+
+# ============================================================================
+# Changeset presence (mirrors .github/workflows/changeset-check.yml)
+# ============================================================================
+# Skip for branches that don't PR into develop, and for docs/ci-only branches.
+
+case "$current_branch" in
+  release/*|hotfix/*|changeset-release/*|docs/*|ci/*) ;;
+  *)
+    COUNT=$(find .changeset -maxdepth 1 -name '*.md' ! -name 'README.md' 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$COUNT" -eq 0 ]; then
+      echo ""
+      echo "ERROR: no changeset found for this branch."
+      echo "Run 'pnpm exec changeset' to describe your change, or push a docs/*|ci/* branch to skip this."
+      exit 1
+    fi
+    ;;
+esac
+
+# ============================================================================
+# Full CI gate
+# ============================================================================
+
+echo ""
+echo "Running full CI checks before push..."
+pnpm run ci
+
+echo "Pre-push checks passed"
+exit 0

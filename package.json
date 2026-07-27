@@ -61,6 +61,7 @@
     "publish:all": "pnpm publish --access public --no-git-checks",
     "generate:og": "node scripts/generate-og.mjs",
     "clean": "pnpm exec tsc -b --clean",
+    "prepare": "git config core.hooksPath .githooks || true",
     "lint": "pnpm exec eslint . --max-warnings 0",
     "prepack": "pnpm run generate:og && pnpm run clean && pnpm run build",
     "prepublishOnly": "pnpm run generate:og && pnpm run ci",
