@@ -1,0 +1,48 @@
+name: License Check
+
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  license-check:
+    name: Validate Dependency Licenses
+    permissions:
+      contents: read
+      packages: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - uses: ./.github/actions/node-setup
+        with:
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@studnicky'
+
+      - name: Check dependency licenses
+        id: license-check
+        run: |
+          pnpm dlx license-checker-rseidelsohn \
+            --production \
+            --failOn "GPL-2.0;GPL-3.0;AGPL-3.0;LGPL-2.1;LGPL-3.0;UNLICENSED" \
+            --summary 2>&1 | tee license-report.txt
+
+      - name: Comment on PR (if violations found)
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('license-report.txt', 'utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## License Compliance Issue\n\nSome dependencies have unapproved licenses:\n\n\`\`\`\n${report}\n\`\`\`\n\nReview the dependency or find an alternative package.`
+            });
