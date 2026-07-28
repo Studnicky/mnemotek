@@ -1,3 +1,4 @@
+import {branchPrefixToConventionalType} from './conventionalCommits.js'
 import * as gitPrimitives from './gitPrimitives.js'
 import * as githubPrimitives from './githubPrimitives.js'
 
@@ -40,16 +41,6 @@ function startsWithKnownPrefix (branch: string): boolean {
 
 }
 
-const CONVENTIONAL_COMMIT_TYPE_OVERRIDES: Readonly<Record<string, string>> = Object.freeze({
-  bugfix: 'fix',
-  feature: 'feat'
-})
-
-function branchPrefixToConventionalType (prefix: string): string {
-
-  return CONVENTIONAL_COMMIT_TYPE_OVERRIDES[prefix] ?? prefix
-
-}
 
 export function featureFlow (input: {
   readonly branch?: string

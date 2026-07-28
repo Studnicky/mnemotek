@@ -1,7 +1,7 @@
 {
   "name": "@studnicky/git-flow",
   "version": "0.1.0",
-  "description": "Mnemotek-based git-flow driver: feature/release/hotfix branch orchestration with PR create, CI wait, merge, tag, and back-merge. No server, no daemon.",
+  "description": "Mnemotek-based git-flow driver: feature/release/hotfix branch orchestration, Conventional Commits validation, and branch-derived commit type suggestion. No server, no daemon.",
   "author": "Andrew Studnicky <a.j.studnicky@gmail.com>",
   "homepage": "https://github.com/Studnicky/mnemotek/tree/main/packages/git-flow#readme",
   "license": "MIT",

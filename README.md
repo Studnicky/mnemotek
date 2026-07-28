@@ -98,7 +98,7 @@ This repo is a pnpm workspace. The root `@studnicky/mnemotek` is the library; ev
 
 | Package | What it does |
 |---|---|
-| [`@studnicky/git-flow`](packages/git-flow) | Feature/release/hotfix branch orchestration: create, push, PR, CI wait, merge, tag, back-merge |
+| [`@studnicky/git-flow`](packages/git-flow) | Feature/release/hotfix branch orchestration, Conventional Commits validation, branch-derived commit type suggestion |
 | [`@studnicky/redactor`](packages/redactor) | Strip ANSI/spinner noise from command output, track byte/token savings |
 | [`@studnicky/config-standards`](packages/config-standards) | Check/fix `.gitignore` and `package.json` against a small built-in standards set |
 | [`@studnicky/deps-audit`](packages/deps-audit) | Static import-graph analysis: circular imports, orphan modules, unused dependencies |
