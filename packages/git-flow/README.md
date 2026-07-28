@@ -10,7 +10,7 @@ npm install @studnicky/git-flow
 
 ## Commands
 
-- `feature` — `--create --branch <name>` creates `feature/<name>` from `develop`/`main`; `--push` pushes the current feature branch, opens a PR, waits for CI, and squash-merges it; with no flags, reports status
+- `feature` — `--create --branch <name>` creates `feature/<name>` from `develop`/`main` (`--type fix|chore|ci|docs` for a different prefix); `--push` pushes the current branch, opens a PR, waits for CI, and squash-merges it; with no flags, reports status
 - `release` — `develop` → `release/<version>` → PR → CI wait → merge into `main` → tag → back-merge into `develop`. `--major`/`--minor` control the bump (default patch), `--version` sets it explicitly, `--dry-run` previews without touching the repo, `--direct` skips the PR when the target branch isn't protected
 - `hotfix` — same shape as `release` but branches from `main` and defaults to a patch bump
 - `sync` — fetch, prune, and fast-forward `main`/`develop`, then return to the original branch

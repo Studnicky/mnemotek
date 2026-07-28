@@ -12,9 +12,30 @@ export interface FeatureFlowResult {
   readonly targetBranch: string
 }
 
-function formatBranchName (name: string): string {
+const BRANCH_TYPES = ['feature', 'fix', 'chore', 'ci', 'docs'] as const
+export type BranchType = typeof BRANCH_TYPES[number]
 
-  return name.startsWith('feature/') ? name : `feature/${name}`
+function isBranchType (value: string): value is BranchType {
+
+  return (BRANCH_TYPES as readonly string[]).includes(value)
+
+}
+
+function branchTypePrefixes (): readonly string[] {
+
+  return BRANCH_TYPES.map((type) => `${type}/`)
+
+}
+
+function formatBranchName (name: string, type: BranchType): string {
+
+  return branchTypePrefixes().some((prefix) => name.startsWith(prefix)) ? name : `${type}/${name}`
+
+}
+
+function startsWithKnownPrefix (branch: string): boolean {
+
+  return branchTypePrefixes().some((prefix) => branch.startsWith(prefix))
 
 }
 
@@ -24,7 +45,10 @@ export function featureFlow (input: {
   readonly direct?: boolean
   readonly push?: boolean
   readonly repo?: string
+  readonly type?: string
 }): FeatureFlowResult {
+
+  const branchType = input.type !== undefined && isBranchType(input.type) ? input.type : 'feature'
 
   const structure = gitPrimitives.detectBranchStructure()
   const targetBranch = structure.development ?? structure.production
@@ -35,12 +59,12 @@ export function featureFlow (input: {
 
     const branch = structure.current
 
-    if (!branch.startsWith('feature/')) {
+    if (!startsWithKnownPrefix(branch)) {
 
       return {
         branch,
         commits: [],
-        error: 'Not on a feature branch.',
+        error: `Not on a branch prefixed with one of: ${BRANCH_TYPES.join(', ')}.`,
         mode: 'push',
         prUrl: undefined,
         pushed: false,
@@ -73,11 +97,13 @@ export function featureFlow (input: {
 
     }
 
+    const [prefix, ...nameParts] = branch.split('/')
+    const conventionalType = prefix === 'feature' ? 'feat' : (prefix ?? 'chore')
     const prUrl = githubPrimitives.createPr({
       base: targetBranch,
-      body: `Feature branch \`${branch}\` (${String(commits.length)} commit(s)).`,
+      body: `Branch \`${branch}\` (${String(commits.length)} commit(s)).`,
       repo: input.repo,
-      title: `feat: ${branch.replace('feature/', '')}`
+      title: `${conventionalType}: ${nameParts.join('/')}`
     })
 
     githubPrimitives.waitForChecks({repo: input.repo})
@@ -103,7 +129,7 @@ export function featureFlow (input: {
 
     }
 
-    const branchName = formatBranchName(input.branch)
+    const branchName = formatBranchName(input.branch, branchType)
 
     if (gitPrimitives.branchExists(branchName)) {
 
@@ -144,7 +170,7 @@ export function featureFlow (input: {
   }
 
   const branch = structure.current
-  const commits = branch.startsWith('feature/') ? gitPrimitives.getCommitsAhead(targetBranch) : []
+  const commits = startsWithKnownPrefix(branch) ? gitPrimitives.getCommitsAhead(targetBranch) : []
 
   return {branch, commits, error: undefined, mode: 'status', prUrl: undefined, pushed: false, targetBranch}
 
