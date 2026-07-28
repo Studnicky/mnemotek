@@ -104,6 +104,24 @@ describe('git-flow suite', () => {
 
   })
 
+  test('featureFlow: create mode honors --type for non-feature branch prefixes', () => {
+
+    const dir = makeRepo()
+
+    try {
+
+      const result = runIn(dir, () => featureFlow({branch: 'broken-thing', create: true, type: 'fix'}))
+      assert.equal(result.error, undefined)
+      assert.equal(result.branch, 'fix/broken-thing')
+
+    } finally {
+
+      rmSync(dir, {force: true, recursive: true})
+
+    }
+
+  })
+
   test('featureFlow: status mode reports the current branch with no error', () => {
 
     const dir = makeRepo()
