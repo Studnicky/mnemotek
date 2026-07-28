@@ -1,6 +1,9 @@
 import {Mnemotek} from '@studnicky/mnemotek'
+import {readFileSync} from 'node:fs'
 
+import {branchPrefixToConventionalType, CONVENTIONAL_COMMIT_TYPES, validateCommitMessage} from './conventionalCommits.js'
 import {featureFlow} from './featureFlow.js'
+import {currentBranch} from './gitPrimitives.js'
 import {hotfixFlow} from './hotfixFlow.js'
 import {releaseFlow} from './releaseFlow.js'
 import {syncFlow} from './syncFlow.js'
@@ -94,6 +97,65 @@ export function createGitFlowApp (): Mnemotek {
     schema: {
       additionalProperties: false,
       properties: {},
+      type: 'object'
+    }
+  })
+
+  app.command({
+    description: 'Validate a commit message against Conventional Commits. Reads --message directly or --file (as git\'s commit-msg hook does).',
+    name: 'commit-check',
+    runner: (payload) => {
+
+      const branch = typeof payload.branch === 'string' ? payload.branch : currentBranch()
+      const message = typeof payload.file === 'string'
+        ? readFileSync(payload.file, 'utf8')
+        : (typeof payload.message === 'string' ? payload.message : undefined)
+
+      if (message === undefined) {
+
+        throw new TypeError('commit-check requires either "message" or "file".')
+
+      }
+
+      const result = validateCommitMessage({branch, message})
+
+      if (payload.strict === true && !result.valid) {
+
+        throw new Error(`Invalid commit message "${result.subject}". Expected: type(scope)?: description, one of ${CONVENTIONAL_COMMIT_TYPES.join(', ')}.`)
+
+      }
+
+      return result
+
+    },
+    schema: {
+      additionalProperties: false,
+      properties: {
+        branch: {description: 'Branch to check for a back-merge exemption. Defaults to the current branch.', type: 'string'},
+        file: {description: 'Path to a file containing the commit message (as git passes to commit-msg).', type: 'string'},
+        message: {description: 'The commit message to validate.', type: 'string'},
+        strict: {description: 'Throw (non-zero exit as a CLI) instead of returning valid:false. Use this in a commit-msg hook.', type: 'boolean'}
+      },
+      type: 'object'
+    }
+  })
+
+  app.command({
+    description: 'Derive the Conventional Commits type implied by a branch\'s prefix, so a commit message never has to be hand-guessed.',
+    name: 'commit-type',
+    runner: (payload) => {
+
+      const branch = typeof payload.branch === 'string' ? payload.branch : currentBranch()
+      const prefix = branch.split('/')[0] ?? branch
+
+      return {branch, prefix, type: branchPrefixToConventionalType(prefix)}
+
+    },
+    schema: {
+      additionalProperties: false,
+      properties: {
+        branch: {description: 'Branch to derive the type from. Defaults to the current branch.', type: 'string'}
+      },
       type: 'object'
     }
   })

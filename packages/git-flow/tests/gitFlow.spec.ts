@@ -6,6 +6,7 @@ import {join} from 'node:path'
 import {describe, test} from 'node:test'
 
 import {bumpVersion, updateChangelog, updatePackageVersion} from '../src/core/versioning.js'
+import {branchPrefixToConventionalType, validateCommitMessage} from '../src/core/conventionalCommits.js'
 import {detectBranchStructure} from '../src/core/gitPrimitives.js'
 import {featureFlow} from '../src/core/featureFlow.js'
 import {releaseFlow} from '../src/core/releaseFlow.js'
@@ -196,11 +197,106 @@ describe('git-flow suite', () => {
 
   })
 
-  test('manifest: exposes feature, release, hotfix, and sync commands', () => {
+  test('branchPrefixToConventionalType: maps feature/bugfix to feat/fix, passes through the rest', () => {
+
+    assert.equal(branchPrefixToConventionalType('feature'), 'feat')
+    assert.equal(branchPrefixToConventionalType('bugfix'), 'fix')
+    assert.equal(branchPrefixToConventionalType('chore'), 'chore')
+    assert.equal(branchPrefixToConventionalType('docs'), 'docs')
+    assert.equal(branchPrefixToConventionalType('nonsense'), 'chore')
+
+  })
+
+  test('validateCommitMessage: accepts a well-formed Conventional Commits subject', () => {
+
+    const result = validateCommitMessage({message: 'fix(cli): correct the exit code'})
+    assert.equal(result.valid, true)
+    assert.equal(result.type, 'fix')
+    assert.equal(result.scope, 'cli')
+
+  })
+
+  test('validateCommitMessage: rejects a subject with no type prefix', () => {
+
+    const result = validateCommitMessage({message: 'correct the exit code'})
+    assert.equal(result.valid, false)
+
+  })
+
+  test('validateCommitMessage: exempts Merge/Revert/Squashed subjects', () => {
+
+    assert.equal(validateCommitMessage({message: "Merge branch 'develop'"}).exempt, true)
+    assert.equal(validateCommitMessage({message: 'Revert "feat: broken thing"'}).exempt, true)
+
+  })
+
+  test('validateCommitMessage: exempts chore/backmerge-* branches regardless of subject', () => {
+
+    const result = validateCommitMessage({branch: 'chore/backmerge-v1.2.3', message: 'whatever this is'})
+    assert.equal(result.exempt, true)
+    assert.equal(result.valid, true)
+
+  })
+
+  test('commit-check command: validates via --file the way git invokes commit-msg', async () => {
+
+    const dir = mkdtempSync(join(tmpdir(), 'git-flow-test-'))
+
+    try {
+
+      const msgPath = join(dir, 'COMMIT_EDITMSG')
+      writeFileSync(msgPath, 'feat: add the thing\n')
+
+      const app = createGitFlowApp()
+      const result = await app.run('commit-check', {branch: 'feature/x', file: msgPath}) as Record<string, unknown> | undefined
+
+      assert.equal(result?.valid, true)
+      assert.equal(result?.type, 'feat')
+
+    } finally {
+
+      rmSync(dir, {force: true, recursive: true})
+
+    }
+
+  })
+
+  test('commit-check command: --strict throws (non-zero CLI exit) instead of returning valid:false', async () => {
+
+    const app = createGitFlowApp()
+    await assert.rejects(
+      async () => app.run('commit-check', {branch: 'feature/x', message: 'did a thing wrong', strict: true}),
+      /Invalid commit message/u
+    )
+
+  })
+
+  test('commit-type command: derives the conventional type from the current branch', async () => {
+
+    const dir = makeRepo()
+    execFileSync('git', ['checkout', '-q', '-b', 'bugfix/thing'], {cwd: dir})
+
+    try {
+
+      const app = createGitFlowApp()
+      const result = await runIn(dir, () => app.run('commit-type', {})) as Record<string, unknown> | undefined
+
+      assert.equal(result?.type, 'fix')
+      assert.equal(result?.prefix, 'bugfix')
+
+    } finally {
+
+      rmSync(dir, {force: true, recursive: true})
+
+    }
+
+  })
+
+  test('manifest: exposes all commands', () => {
 
     const app = createGitFlowApp()
     const names = app.manifest().commands.map((command) => command.name).sort()
-    assert.deepEqual(names, ['feature', 'hotfix', 'release', 'sync'])
+    assert.deepEqual(names, ['commit-check', 'commit-type', 'feature', 'hotfix', 'release', 'sync'])
 
   })
 

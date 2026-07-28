@@ -1,3 +1,4 @@
+export {branchPrefixToConventionalType, CONVENTIONAL_COMMIT_TYPES, validateCommitMessage} from './core/conventionalCommits.js'
 export {featureFlow} from './core/featureFlow.js'
 export * as gitPrimitives from './core/gitPrimitives.js'
 export {createGitFlowApp} from './core/gitFlowApp.js'
