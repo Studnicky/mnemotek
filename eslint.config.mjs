@@ -22,7 +22,7 @@ const studnickyV8Rules = Object.fromEntries(
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', 'site/**', 'scripts/**', 'tests/**', 'test/**', '**/*.d.ts', 'eslint.config.mjs']
+    ignores: ['dist/**', 'node_modules/**', 'site/**', 'scripts/**', 'tests/**', 'test/**', '**/*.d.ts', 'eslint.config.mjs', 'packages/**']
   },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
