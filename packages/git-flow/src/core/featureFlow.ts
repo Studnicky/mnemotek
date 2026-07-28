@@ -12,7 +12,8 @@ export interface FeatureFlowResult {
   readonly targetBranch: string
 }
 
-const BRANCH_TYPES = ['feature', 'fix', 'chore', 'ci', 'docs'] as const
+// hotfix and release are their own dedicated commands, not a --type here.
+const BRANCH_TYPES = ['feature', 'bugfix', 'chore', 'docs', 'test', 'refactor', 'perf', 'ci', 'build'] as const
 export type BranchType = typeof BRANCH_TYPES[number]
 
 function isBranchType (value: string): value is BranchType {
@@ -36,6 +37,17 @@ function formatBranchName (name: string, type: BranchType): string {
 function startsWithKnownPrefix (branch: string): boolean {
 
   return branchTypePrefixes().some((prefix) => branch.startsWith(prefix))
+
+}
+
+const CONVENTIONAL_COMMIT_TYPE_OVERRIDES: Readonly<Record<string, string>> = Object.freeze({
+  bugfix: 'fix',
+  feature: 'feat'
+})
+
+function branchPrefixToConventionalType (prefix: string): string {
+
+  return CONVENTIONAL_COMMIT_TYPE_OVERRIDES[prefix] ?? prefix
 
 }
 
@@ -98,7 +110,10 @@ export function featureFlow (input: {
     }
 
     const [prefix, ...nameParts] = branch.split('/')
-    const conventionalType = prefix === 'feature' ? 'feat' : (prefix ?? 'chore')
+    // Branch-type prefix and Conventional Commits type are different vocabularies:
+    // the branch says "bugfix", the commit type is "fix" (bugfix isn't a valid
+    // Conventional Commits type). feature -> feat is the other divergence.
+    const conventionalType = branchPrefixToConventionalType(prefix ?? 'chore')
     const prUrl = githubPrimitives.createPr({
       base: targetBranch,
       body: `Branch \`${branch}\` (${String(commits.length)} commit(s)).`,
@@ -107,7 +122,7 @@ export function featureFlow (input: {
     })
 
     githubPrimitives.waitForChecks({repo: input.repo})
-    githubPrimitives.mergePr({repo: input.repo})
+    githubPrimitives.mergePr({method: 'squash', repo: input.repo})
 
     return {branch, commits, error: undefined, mode: 'push', prUrl, pushed: true, targetBranch}
 
@@ -120,7 +135,7 @@ export function featureFlow (input: {
       return {
         branch: '',
         commits: [],
-        error: 'A branch name is required to create a feature branch.',
+        error: 'A branch name is required to create a branch.',
         mode: 'create',
         prUrl: undefined,
         pushed: false,
