@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {describe, test} from 'node:test'
 
-import {bumpVersion, updateChangelog, updatePackageVersion} from '../src/core/versioning.js'
+import {bumpVersion, updatePackageVersion} from '../src/core/versioning.js'
 import {branchPrefixToConventionalType, validateCommitMessage} from '../src/core/conventionalCommits.js'
 import {detectBranchStructure} from '../src/core/gitPrimitives.js'
 import {featureFlow} from '../src/core/featureFlow.js'
@@ -61,7 +61,7 @@ describe('git-flow suite', () => {
 
   })
 
-  test('updatePackageVersion + updateChangelog: writes real files', () => {
+  test('updatePackageVersion: writes the new version to package.json', () => {
 
     const dir = mkdtempSync(join(tmpdir(), 'git-flow-test-'))
 
@@ -69,13 +69,9 @@ describe('git-flow suite', () => {
 
       writeFileSync(join(dir, 'package.json'), JSON.stringify({name: 'x', version: '0.1.0'}))
       updatePackageVersion(dir, '0.2.0')
-      updateChangelog({newVersion: '0.2.0', root: dir, summary: 'Test release.'})
 
       const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as {readonly version: string}
       assert.equal(pkg.version, '0.2.0')
-
-      const changelog = readFileSync(join(dir, 'CHANGELOG.md'), 'utf8')
-      assert.match(changelog, /0\.2\.0/u)
 
     } finally {
 

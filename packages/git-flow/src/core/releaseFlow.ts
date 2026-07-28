@@ -1,6 +1,6 @@
 import * as gitPrimitives from './gitPrimitives.js'
 import * as githubPrimitives from './githubPrimitives.js'
-import {bumpVersion, getCurrentVersion, updateChangelog, updatePackageVersion, type VersionBump} from './versioning.js'
+import {bumpVersion, getCurrentVersion, updatePackageVersion, type VersionBump} from './versioning.js'
 
 export interface ReleaseFlowResult {
   readonly [key: string]: unknown
@@ -60,8 +60,7 @@ export function releaseFlow (input: {
   steps.push(`created ${releaseBranch}`)
 
   updatePackageVersion(root, newVersion)
-  updateChangelog({newVersion, root, summary: `Release ${tag}.`})
-  steps.push(`bumped version to ${newVersion} and updated CHANGELOG.md`)
+  steps.push(`bumped version to ${newVersion}`)
 
   gitPrimitives.commitAll(`chore(release): ${tag}`)
   steps.push('committed release changes')
