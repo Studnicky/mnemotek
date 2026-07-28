@@ -1,91 +1,97 @@
 import {Mnemotek} from '@studnicky/mnemotek'
 
-import {branchValidate} from './branchValidate.js'
-import {changelogCheck} from './changelogCheck.js'
-import {hooksInstall} from './hooksInstall.js'
-import {prStatus} from './prStatus.js'
+import {featureFlow} from './featureFlow.js'
+import {hotfixFlow} from './hotfixFlow.js'
+import {releaseFlow} from './releaseFlow.js'
+import {syncFlow} from './syncFlow.js'
 
 export function createGitFlowApp (): Mnemotek {
 
   const app = new Mnemotek({
-    description: 'Local-only git-flow helpers: branch naming, hook install, changelog gating, PR status.',
+    description: 'Git-flow driver: feature/release/hotfix branch orchestration, PR create + CI wait + merge + tag + back-merge. Local-only, drives git and gh directly — no server, no proxy.',
     name: 'git-flow-tool',
     version: '0.1.0'
   })
 
   app.command({
-    description: 'Validate a branch name against the git-flow naming convention.',
-    name: 'branch-validate',
-    runner: (payload) => branchValidate({
+    description: 'Feature branch workflow: create, push (PR + CI wait + squash-merge), or status.',
+    name: 'feature',
+    runner: (payload) => featureFlow({
       branch: typeof payload.branch === 'string' ? payload.branch : undefined,
-      pattern: typeof payload.pattern === 'string' ? payload.pattern : undefined
+      create: payload.create === true,
+      direct: payload.direct === true,
+      push: payload.push === true,
+      repo: typeof payload.repo === 'string' ? payload.repo : undefined
     }),
     schema: {
       additionalProperties: false,
       properties: {
-        branch: {description: 'Branch to validate. Defaults to the current branch.', type: 'string'},
-        pattern: {description: 'Override the naming regex.', type: 'string'}
-      },
-      type: 'object'
-    }
-  })
-
-  app.command({
-    description: 'Install pre-commit/pre-push git hooks and wire core.hooksPath.',
-    name: 'hooks-install',
-    runner: (payload) => hooksInstall({
-      force: payload.force === true,
-      targetDir: typeof payload.targetDir === 'string' ? payload.targetDir : undefined
-    }),
-    schema: {
-      additionalProperties: false,
-      properties: {
-        force: {description: 'Overwrite existing hook files.', type: 'boolean'},
-        targetDir: {description: 'Repository root. Defaults to the current directory.', type: 'string'}
-      },
-      type: 'object'
-    }
-  })
-
-  app.command({
-    description: 'Check that a changeset or CHANGELOG Unreleased section exists.',
-    name: 'changelog-check',
-    runner: (payload) => changelogCheck({
-      root: typeof payload.root === 'string' ? payload.root : undefined
-    }),
-    schema: {
-      additionalProperties: false,
-      properties: {
-        root: {description: 'Repository root. Defaults to the current directory.', type: 'string'}
-      },
-      type: 'object'
-    }
-  })
-
-  app.command({
-    description: 'Report a pull request\'s mergeability and check status (single snapshot, no polling).',
-    name: 'pr-status',
-    runner: (payload) => {
-
-      if (typeof payload.number !== 'number') {
-
-        throw new TypeError('pr-status requires a numeric "number".')
-
-      }
-
-      return prStatus({
-        number: payload.number,
-        repo: typeof payload.repo === 'string' ? payload.repo : undefined
-      })
-
-    },
-    schema: {
-      additionalProperties: false,
-      properties: {
-        number: {description: 'Pull request number.', type: 'number'},
+        branch: {description: 'Branch name for feature creation.', type: 'string'},
+        create: {description: 'Create the feature branch.', type: 'boolean'},
+        direct: {description: 'Skip PR and merge directly (only if target is unprotected).', type: 'boolean'},
+        push: {description: 'Push the current feature branch and open/merge its PR.', type: 'boolean'},
         repo: {description: 'owner/repo. Defaults to the current repo.', type: 'string'}
       },
-      required: ['number'],
+      type: 'object'
+    }
+  })
+
+  app.command({
+    description: 'Release workflow: develop -> release branch -> PR -> CI wait -> merge to main -> tag -> back-merge to develop.',
+    name: 'release',
+    runner: (payload) => releaseFlow({
+      bump: payload.major === true ? 'major' : (payload.minor === true ? 'minor' : 'patch'),
+      direct: payload.direct === true,
+      dryRun: payload.dryRun === true,
+      repo: typeof payload.repo === 'string' ? payload.repo : undefined,
+      root: typeof payload.root === 'string' ? payload.root : undefined,
+      version: typeof payload.version === 'string' ? payload.version : undefined
+    }),
+    schema: {
+      additionalProperties: false,
+      properties: {
+        direct: {description: 'Skip PR and merge directly (only if main is unprotected).', type: 'boolean'},
+        dryRun: {description: 'Preview the release without making changes.', type: 'boolean'},
+        major: {description: 'Major version bump.', type: 'boolean'},
+        minor: {description: 'Minor version bump.', type: 'boolean'},
+        repo: {description: 'owner/repo. Defaults to the current repo.', type: 'string'},
+        root: {description: 'Project root containing package.json/CHANGELOG.md.', type: 'string'},
+        version: {description: 'Explicit version (e.g. 1.2.3). Overrides bump flags.', type: 'string'}
+      },
+      type: 'object'
+    }
+  })
+
+  app.command({
+    description: 'Emergency hotfix workflow: main -> hotfix branch -> PR -> CI wait -> merge to main -> tag -> back-merge to develop.',
+    name: 'hotfix',
+    runner: (payload) => hotfixFlow({
+      direct: payload.direct === true,
+      dryRun: payload.dryRun === true,
+      repo: typeof payload.repo === 'string' ? payload.repo : undefined,
+      root: typeof payload.root === 'string' ? payload.root : undefined,
+      version: typeof payload.version === 'string' ? payload.version : undefined
+    }),
+    schema: {
+      additionalProperties: false,
+      properties: {
+        direct: {description: 'Skip PR and merge directly (only if main is unprotected).', type: 'boolean'},
+        dryRun: {description: 'Preview the hotfix without making changes.', type: 'boolean'},
+        repo: {description: 'owner/repo. Defaults to the current repo.', type: 'string'},
+        root: {description: 'Project root containing package.json/CHANGELOG.md.', type: 'string'},
+        version: {description: 'Explicit version (e.g. 1.2.4). Defaults to a patch bump.', type: 'string'}
+      },
+      type: 'object'
+    }
+  })
+
+  app.command({
+    description: 'Fetch, prune, and fast-forward main/develop, then return to the original branch.',
+    name: 'sync',
+    runner: () => syncFlow(),
+    schema: {
+      additionalProperties: false,
+      properties: {},
       type: 'object'
     }
   })
