@@ -57,6 +57,25 @@ export function featureFlow (input: {
   const targetBranch = structure.development ?? structure.production
   const protectedTarget = githubPrimitives.isBranchProtected(targetBranch, input.repo)
   const usePr = protectedTarget || input.direct !== true
+  const mode = input.push === true ? 'push' : input.create === true ? 'create' : 'status'
+
+  try {
+
+    gitPrimitives.assertCleanRepoState()
+
+  } catch (error) {
+
+    return {
+      branch: structure.current,
+      commits: [],
+      error: error instanceof Error ? error.message : String(error),
+      mode,
+      prUrl: undefined,
+      pushed: false,
+      targetBranch
+    }
+
+  }
 
   if (input.push === true) {
 

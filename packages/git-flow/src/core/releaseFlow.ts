@@ -24,6 +24,23 @@ export function releaseFlow (input: {
   const root = input.root ?? process.cwd()
   const steps: string[] = []
 
+  try {
+
+    gitPrimitives.assertCleanRepoState()
+
+  } catch (error) {
+
+    return {
+      error: error instanceof Error ? error.message : String(error),
+      newVersion: '',
+      previousVersion: undefined,
+      releaseBranch: '',
+      steps,
+      tag: ''
+    }
+
+  }
+
   if (gitPrimitives.hasUncommittedChanges()) {
 
     return {
@@ -39,14 +56,15 @@ export function releaseFlow (input: {
 
   const structure = gitPrimitives.detectBranchStructure()
   const sourceBranch = structure.development ?? structure.current
-  const previousVersion = getCurrentVersion(root)
-  const newVersion = input.version ?? (previousVersion === undefined
-    ? '0.1.0'
-    : bumpVersion(previousVersion, input.bump ?? 'patch'))
-  const tag = `v${newVersion}`
-  const releaseBranch = `release/${newVersion}`
 
   if (input.dryRun === true) {
+
+    const previousVersion = getCurrentVersion(root)
+    const newVersion = input.version ?? (previousVersion === undefined
+      ? '0.1.0'
+      : bumpVersion(previousVersion, input.bump ?? 'patch'))
+    const tag = `v${newVersion}`
+    const releaseBranch = `release/${newVersion}`
 
     return {error: undefined, newVersion, previousVersion, releaseBranch, steps: ['dry-run: no changes made'], tag}
 
@@ -56,8 +74,24 @@ export function releaseFlow (input: {
   gitPrimitives.pullBranch(sourceBranch)
   steps.push(`checked out and pulled ${sourceBranch}`)
 
-  gitPrimitives.createBranch(releaseBranch, sourceBranch)
-  steps.push(`created ${releaseBranch}`)
+  const previousVersion = getCurrentVersion(root)
+  const newVersion = input.version ?? (previousVersion === undefined
+    ? '0.1.0'
+    : bumpVersion(previousVersion, input.bump ?? 'patch'))
+  const tag = `v${newVersion}`
+  const releaseBranch = `release/${newVersion}`
+
+  if (gitPrimitives.branchExists(releaseBranch)) {
+
+    gitPrimitives.checkoutBranch(releaseBranch)
+    steps.push(`resumed existing ${releaseBranch} from a prior run`)
+
+  } else {
+
+    gitPrimitives.createBranch(releaseBranch, sourceBranch)
+    steps.push(`created ${releaseBranch}`)
+
+  }
 
   updatePackageVersion(root, newVersion)
   steps.push(`bumped version to ${newVersion}`)

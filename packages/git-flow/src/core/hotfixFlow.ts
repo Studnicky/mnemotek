@@ -23,6 +23,23 @@ export function hotfixFlow (input: {
   const root = input.root ?? process.cwd()
   const steps: string[] = []
 
+  try {
+
+    gitPrimitives.assertCleanRepoState()
+
+  } catch (error) {
+
+    return {
+      error: error instanceof Error ? error.message : String(error),
+      hotfixBranch: '',
+      newVersion: '',
+      previousVersion: undefined,
+      steps,
+      tag: ''
+    }
+
+  }
+
   if (gitPrimitives.hasUncommittedChanges()) {
 
     return {
@@ -37,12 +54,13 @@ export function hotfixFlow (input: {
   }
 
   const structure = gitPrimitives.detectBranchStructure()
-  const previousVersion = getCurrentVersion(root)
-  const newVersion = input.version ?? (previousVersion === undefined ? '0.0.1' : bumpVersion(previousVersion, 'patch'))
-  const tag = `v${newVersion}`
-  const hotfixBranch = `hotfix/${newVersion}`
 
   if (input.dryRun === true) {
+
+    const previousVersion = getCurrentVersion(root)
+    const newVersion = input.version ?? (previousVersion === undefined ? '0.0.1' : bumpVersion(previousVersion, 'patch'))
+    const tag = `v${newVersion}`
+    const hotfixBranch = `hotfix/${newVersion}`
 
     return {error: undefined, hotfixBranch, newVersion, previousVersion, steps: ['dry-run: no changes made'], tag}
 
@@ -52,8 +70,22 @@ export function hotfixFlow (input: {
   gitPrimitives.pullBranch(structure.production)
   steps.push(`checked out and pulled ${structure.production}`)
 
-  gitPrimitives.createBranch(hotfixBranch, structure.production)
-  steps.push(`created ${hotfixBranch}`)
+  const previousVersion = getCurrentVersion(root)
+  const newVersion = input.version ?? (previousVersion === undefined ? '0.0.1' : bumpVersion(previousVersion, 'patch'))
+  const tag = `v${newVersion}`
+  const hotfixBranch = `hotfix/${newVersion}`
+
+  if (gitPrimitives.branchExists(hotfixBranch)) {
+
+    gitPrimitives.checkoutBranch(hotfixBranch)
+    steps.push(`resumed existing ${hotfixBranch} from a prior run`)
+
+  } else {
+
+    gitPrimitives.createBranch(hotfixBranch, structure.production)
+    steps.push(`created ${hotfixBranch}`)
+
+  }
 
   updatePackageVersion(root, newVersion)
   steps.push(`bumped version to ${newVersion}`)

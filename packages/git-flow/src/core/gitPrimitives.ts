@@ -1,4 +1,7 @@
 import {execFileSync} from 'node:child_process'
+import {existsSync, unlinkSync, writeFileSync} from 'node:fs'
+import {join} from 'node:path'
+import process from 'node:process'
 
 export interface CommitInfo {
   readonly hash: string
@@ -31,6 +34,18 @@ function git (args: readonly string[], options: {readonly allowFail?: boolean} =
 
 }
 
+function gitDir (): string {
+
+  return git(['rev-parse', '--git-dir'])
+
+}
+
+function mergeHeadExists (): boolean {
+
+  return existsSync(join(gitDir(), 'MERGE_HEAD'))
+
+}
+
 export function currentBranch (): string {
 
   return git(['rev-parse', '--abbrev-ref', 'HEAD'])
@@ -40,6 +55,73 @@ export function currentBranch (): string {
 export function hasUncommittedChanges (): boolean {
 
   return git(['status', '--porcelain']).length > 0
+
+}
+
+export function isRepoMidOperation (): boolean {
+
+  const dir = gitDir()
+  return existsSync(join(dir, 'MERGE_HEAD')) || existsSync(join(dir, 'rebase-merge'))
+
+}
+
+export function assertCleanRepoState (): void {
+
+  if (isRepoMidOperation()) {
+
+    throw new Error('Repository is already mid-merge or mid-rebase. Resolve or abort it before running git-flow-tool again.')
+
+  }
+
+}
+
+const LOCK_FILE_NAME = 'git-flow-tool.lock'
+
+function lockFilePath (): string {
+
+  return join(gitDir(), LOCK_FILE_NAME)
+
+}
+
+export function acquireLock (): void {
+
+  const path = lockFilePath()
+
+  if (existsSync(path)) {
+
+    throw new Error(`git-flow-tool is already running in this repository (lock file ${path} exists). Wait for it to finish, or remove the lock file if a prior run crashed without cleaning up.`)
+
+  }
+
+  writeFileSync(path, String(process.pid))
+
+}
+
+export function releaseLock (): void {
+
+  const path = lockFilePath()
+
+  if (existsSync(path)) {
+
+    unlinkSync(path)
+
+  }
+
+}
+
+export function withLock<T> (fn: () => T): T {
+
+  acquireLock()
+
+  try {
+
+    return fn()
+
+  } finally {
+
+    releaseLock()
+
+  }
 
 }
 
@@ -104,7 +186,20 @@ export function checkoutBranch (branch: string): void {
 
 export function pullBranch (branch: string): void {
 
-  git(['pull', 'origin', branch], {allowFail: true})
+  try {
+
+    git(['pull', '--no-rebase', 'origin', branch])
+
+  } catch {
+
+    if (mergeHeadExists()) {
+
+      git(['merge', '--abort'], {allowFail: true})
+      throw new Error(`Pull conflict on ${branch}: merge aborted, repository restored to a clean state. Resolve manually and retry.`)
+
+    }
+
+  }
 
 }
 
@@ -114,9 +209,41 @@ export function createBranch (branch: string, base: string): void {
 
 }
 
+function pushWithRetry (branch: string, args: readonly string[]): void {
+
+  try {
+
+    git(args)
+
+  } catch {
+
+    try {
+
+      git(['pull', '--ff-only', 'origin', branch])
+
+    } catch {
+
+      throw new Error(`Push to ${branch} was rejected and the branch has diverged (fast-forward pull failed). Resolve manually and retry.`)
+
+    }
+
+    try {
+
+      git(args)
+
+    } catch {
+
+      throw new Error(`Push to ${branch} was rejected again after a fast-forward pull. Resolve manually.`)
+
+    }
+
+  }
+
+}
+
 export function pushBranch (branch: string): void {
 
-  git(['push', '-u', 'origin', branch])
+  pushWithRetry(branch, ['push', '-u', 'origin', branch])
 
 }
 
@@ -152,8 +279,19 @@ export function deleteLocalBranch (branch: string): void {
 export function mergeBranch (target: string, source: string): void {
 
   git(['checkout', target])
-  git(['pull', 'origin', target], {allowFail: true})
-  git(['merge', '--no-ff', source, '-m', `chore: merge ${source} into ${target}`])
-  git(['push', 'origin', target])
+  git(['pull', '--no-rebase', 'origin', target], {allowFail: true})
+
+  try {
+
+    git(['merge', '--no-ff', source, '-m', `chore: merge ${source} into ${target}`])
+
+  } catch {
+
+    git(['merge', '--abort'], {allowFail: true})
+    throw new Error(`Merge of ${source} into ${target} failed and was aborted. Resolve the conflict manually.`)
+
+  }
+
+  pushWithRetry(target, ['push', 'origin', target])
 
 }

@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs'
 
 import {branchPrefixToConventionalType, CONVENTIONAL_COMMIT_TYPES, validateCommitMessage} from './conventionalCommits.js'
 import {featureFlow} from './featureFlow.js'
-import {currentBranch} from './gitPrimitives.js'
+import * as gitPrimitives from './gitPrimitives.js'
 import {hotfixFlow} from './hotfixFlow.js'
 import {releaseFlow} from './releaseFlow.js'
 import {syncFlow} from './syncFlow.js'
@@ -19,14 +19,14 @@ export function createGitFlowApp (): Mnemotek {
   app.command({
     description: 'Feature/bugfix/chore/docs/test/refactor/perf/ci/build branch workflow: create, push (PR + CI wait + squash-merge), or status.',
     name: 'feature',
-    runner: (payload) => featureFlow({
+    runner: (payload) => gitPrimitives.withLock(() => featureFlow({
       branch: typeof payload.branch === 'string' ? payload.branch : undefined,
       create: payload.create === true,
       direct: payload.direct === true,
       push: payload.push === true,
       repo: typeof payload.repo === 'string' ? payload.repo : undefined,
       type: typeof payload.type === 'string' ? payload.type : undefined
-    }),
+    })),
     schema: {
       additionalProperties: false,
       properties: {
@@ -44,14 +44,14 @@ export function createGitFlowApp (): Mnemotek {
   app.command({
     description: 'Release workflow: develop -> release branch -> PR -> CI wait -> merge to main -> tag -> back-merge to develop.',
     name: 'release',
-    runner: (payload) => releaseFlow({
+    runner: (payload) => gitPrimitives.withLock(() => releaseFlow({
       bump: payload.major === true ? 'major' : (payload.minor === true ? 'minor' : 'patch'),
       direct: payload.direct === true,
       dryRun: payload.dryRun === true,
       repo: typeof payload.repo === 'string' ? payload.repo : undefined,
       root: typeof payload.root === 'string' ? payload.root : undefined,
       version: typeof payload.version === 'string' ? payload.version : undefined
-    }),
+    })),
     schema: {
       additionalProperties: false,
       properties: {
@@ -70,13 +70,13 @@ export function createGitFlowApp (): Mnemotek {
   app.command({
     description: 'Emergency hotfix workflow: main -> hotfix branch -> PR -> CI wait -> merge to main -> tag -> back-merge to develop.',
     name: 'hotfix',
-    runner: (payload) => hotfixFlow({
+    runner: (payload) => gitPrimitives.withLock(() => hotfixFlow({
       direct: payload.direct === true,
       dryRun: payload.dryRun === true,
       repo: typeof payload.repo === 'string' ? payload.repo : undefined,
       root: typeof payload.root === 'string' ? payload.root : undefined,
       version: typeof payload.version === 'string' ? payload.version : undefined
-    }),
+    })),
     schema: {
       additionalProperties: false,
       properties: {
@@ -93,7 +93,7 @@ export function createGitFlowApp (): Mnemotek {
   app.command({
     description: 'Fetch, prune, and fast-forward main/develop, then return to the original branch.',
     name: 'sync',
-    runner: () => syncFlow(),
+    runner: () => gitPrimitives.withLock(() => syncFlow()),
     schema: {
       additionalProperties: false,
       properties: {},
@@ -106,7 +106,7 @@ export function createGitFlowApp (): Mnemotek {
     name: 'commit-check',
     runner: (payload) => {
 
-      const branch = typeof payload.branch === 'string' ? payload.branch : currentBranch()
+      const branch = typeof payload.branch === 'string' ? payload.branch : gitPrimitives.currentBranch()
       const message = typeof payload.file === 'string'
         ? readFileSync(payload.file, 'utf8')
         : (typeof payload.message === 'string' ? payload.message : undefined)
@@ -145,7 +145,7 @@ export function createGitFlowApp (): Mnemotek {
     name: 'commit-type',
     runner: (payload) => {
 
-      const branch = typeof payload.branch === 'string' ? payload.branch : currentBranch()
+      const branch = typeof payload.branch === 'string' ? payload.branch : gitPrimitives.currentBranch()
       const prefix = branch.split('/')[0] ?? branch
 
       return {branch, prefix, type: branchPrefixToConventionalType(prefix)}
