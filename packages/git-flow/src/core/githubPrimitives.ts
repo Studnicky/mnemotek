@@ -62,11 +62,13 @@ export function waitForChecks (input: {
 }
 
 export function mergePr (input: {
+  readonly method?: 'merge' | 'squash'
   readonly repo?: string
 }): void {
 
   const repoArgs = input.repo === undefined ? [] : ['--repo', input.repo]
-  gh(['pr', 'merge', '--squash', '--delete-branch', ...repoArgs])
+  const methodFlag = input.method === 'merge' ? '--merge' : '--squash'
+  gh(['pr', 'merge', methodFlag, '--delete-branch', ...repoArgs])
 
 }
 

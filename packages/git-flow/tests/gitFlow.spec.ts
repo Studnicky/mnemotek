@@ -6,12 +6,13 @@ import {join} from 'node:path'
 import {describe, test} from 'node:test'
 
 import {bumpVersion, updateChangelog, updatePackageVersion} from '../src/core/versioning.js'
+import {detectBranchStructure} from '../src/core/gitPrimitives.js'
 import {featureFlow} from '../src/core/featureFlow.js'
 import {releaseFlow} from '../src/core/releaseFlow.js'
 import {hotfixFlow} from '../src/core/hotfixFlow.js'
 import {createGitFlowApp} from '../src/core/gitFlowApp.js'
 
-function makeRepo (): string {
+function makeRepo (developmentBranchName = 'develop'): string {
 
   const dir = mkdtempSync(join(tmpdir(), 'git-flow-test-'))
   const run = (args: readonly string[]): void => {
@@ -26,7 +27,7 @@ function makeRepo (): string {
   writeFileSync(join(dir, 'README.md'), '# test\n')
   run(['add', '-A'])
   run(['commit', '-q', '-m', 'initial'])
-  run(['checkout', '-q', '-b', 'develop'])
+  run(['checkout', '-q', '-b', developmentBranchName])
 
   return dir
 
@@ -110,9 +111,9 @@ describe('git-flow suite', () => {
 
     try {
 
-      const result = runIn(dir, () => featureFlow({branch: 'broken-thing', create: true, type: 'fix'}))
+      const result = runIn(dir, () => featureFlow({branch: 'broken-thing', create: true, type: 'bugfix'}))
       assert.equal(result.error, undefined)
-      assert.equal(result.branch, 'fix/broken-thing')
+      assert.equal(result.branch, 'bugfix/broken-thing')
 
     } finally {
 
@@ -168,6 +169,24 @@ describe('git-flow suite', () => {
       const result = runIn(dir, () => hotfixFlow({dryRun: true}))
       assert.equal(result.error, undefined)
       assert.equal(result.newVersion, '0.0.1')
+
+    } finally {
+
+      rmSync(dir, {force: true, recursive: true})
+
+    }
+
+  })
+
+  test('detectBranchStructure: detects "development" as well as "develop"', () => {
+
+    const dir = makeRepo('development')
+
+    try {
+
+      const structure = runIn(dir, () => detectBranchStructure())
+      assert.equal(structure.development, 'development')
+      assert.equal(structure.production, 'main')
 
     } finally {
 

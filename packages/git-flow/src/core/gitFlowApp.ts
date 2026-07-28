@@ -14,7 +14,7 @@ export function createGitFlowApp (): Mnemotek {
   })
 
   app.command({
-    description: 'Feature/fix/chore/ci/docs branch workflow: create, push (PR + CI wait + squash-merge), or status.',
+    description: 'Feature/bugfix/chore/docs/test/refactor/perf/ci/build branch workflow: create, push (PR + CI wait + squash-merge), or status.',
     name: 'feature',
     runner: (payload) => featureFlow({
       branch: typeof payload.branch === 'string' ? payload.branch : undefined,
@@ -32,7 +32,7 @@ export function createGitFlowApp (): Mnemotek {
         direct: {description: 'Skip PR and merge directly (only if target is unprotected).', type: 'boolean'},
         push: {description: 'Push the current branch and open/merge its PR.', type: 'boolean'},
         repo: {description: 'owner/repo. Defaults to the current repo.', type: 'string'},
-        type: {description: 'Branch type prefix: feature (default), fix, chore, ci, or docs.', enum: ['feature', 'fix', 'chore', 'ci', 'docs'], type: 'string'}
+        type: {description: 'Branch type prefix: feature (default), bugfix, chore, docs, test, refactor, perf, ci, or build.', enum: ['feature', 'bugfix', 'chore', 'docs', 'test', 'refactor', 'perf', 'ci', 'build'], type: 'string'}
       },
       type: 'object'
     }

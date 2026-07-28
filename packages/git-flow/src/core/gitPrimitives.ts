@@ -50,16 +50,28 @@ export function branchExists (branch: string): boolean {
 
 }
 
+const DEVELOPMENT_BRANCH_NAMES = ['develop', 'development'] as const
+
+function branchExistsLocalOrRemote (branch: string): boolean {
+
+  return branchExists(branch) || branchExists(`origin/${branch}`)
+
+}
+
+function detectDevelopmentBranch (): string | undefined {
+
+  return DEVELOPMENT_BRANCH_NAMES.find((name) => branchExistsLocalOrRemote(name))
+
+}
+
 export function detectBranchStructure (): BranchStructure {
 
   const current = currentBranch()
-  const hasMain = branchExists('main') || branchExists('origin/main')
-  const production = hasMain ? 'main' : 'master'
-  const hasDevelop = branchExists('develop') || branchExists('origin/develop')
+  const production = branchExistsLocalOrRemote('main') ? 'main' : 'master'
 
   return {
     current,
-    development: hasDevelop ? 'develop' : undefined,
+    development: detectDevelopmentBranch(),
     production
   }
 

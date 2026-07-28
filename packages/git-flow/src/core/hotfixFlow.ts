@@ -86,7 +86,7 @@ export function hotfixFlow (input: {
     githubPrimitives.waitForChecks({repo: input.repo})
     steps.push('CI passed')
 
-    githubPrimitives.mergePr({repo: input.repo})
+    githubPrimitives.mergePr({method: 'merge', repo: input.repo})
     steps.push(`merged hotfix PR into ${structure.production}`)
 
   }
