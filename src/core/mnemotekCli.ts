@@ -139,10 +139,22 @@ export class MnemotekCli {
           interactive: isInteractive,
           schema: command.inputSchema
         })
-      await app.run(
+      const result = await app.run(
         command.name,
         configuration
       )
+
+      if (result !== undefined) {
+
+        process.stdout.write(`${JSON.stringify(
+          result,
+          null,
+          2
+        )}\n`)
+
+      }
+
+      process.exitCode = 0
 
     })
 

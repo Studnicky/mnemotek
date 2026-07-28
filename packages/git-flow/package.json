@@ -1,0 +1,55 @@
+{
+  "name": "@studnicky/git-flow",
+  "version": "0.1.0",
+  "description": "Mnemotek-based CLI/MCP/skill for branch naming, hook install, changelog gating, and PR status — no server, no daemon.",
+  "author": "Andrew Studnicky <a.j.studnicky@gmail.com>",
+  "homepage": "https://github.com/Studnicky/mnemotek/tree/main/packages/git-flow#readme",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Studnicky/mnemotek.git",
+    "directory": "packages/git-flow"
+  },
+  "keywords": ["git", "git-flow", "cli", "mcp", "changelog"],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "git-flow-tool": "./dist/bin/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "public"
+  },
+  "private": false,
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "ci": "pnpm run typecheck && pnpm run lint && pnpm run test",
+    "lint": "eslint . --max-warnings 0",
+    "test": "pnpm run build && node --import tsx --test tests/**/*.spec.ts",
+    "typecheck": "tsc --project tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@studnicky/mnemotek": "workspace:*",
+    "commander": "^14.0.0",
+    "enquirer": "^2.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.65.0"
+  }
+}

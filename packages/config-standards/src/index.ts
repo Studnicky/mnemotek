@@ -1,0 +1,5 @@
+export {checkGitignore} from './core/checkGitignore.js'
+export {checkPackageJson} from './core/checkPackageJson.js'
+export {createConfigStandardsApp} from './core/configStandardsApp.js'
+export {fixGitignore} from './core/fixGitignore.js'
+export {fixPackageJson} from './core/fixPackageJson.js'

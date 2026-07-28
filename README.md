@@ -92,14 +92,25 @@ Entity schemas, types, and validators are exported separately:
 import { mnemotekContract } from '@studnicky/mnemotek/entities';
 ```
 
+## Packages
+
+This repo is a pnpm workspace. The root `@studnicky/mnemotek` is the library; everything under `packages/*` is a small standalone CLI/MCP/skill tool built on it — each one just defines its commands as a Mnemotek manifest and gets a CLI, MCP adapter, and skill manifest for free. No package here depends on a graph database, an agent-orchestration proxy, or a live external API — each shells out only to tools already on a normal dev machine (`git`, `gh`, the target project's own `tsc`/`eslint`).
+
+| Package | What it does |
+|---|---|
+| [`@studnicky/git-flow`](packages/git-flow) | Branch-name validation, git hook install, changeset/changelog gating, single-shot PR status |
+| [`@studnicky/redactor`](packages/redactor) | Strip ANSI/spinner noise from command output, track byte/token savings |
+| [`@studnicky/config-standards`](packages/config-standards) | Check/fix `.gitignore` and `package.json` against a small built-in standards set |
+| [`@studnicky/deps-audit`](packages/deps-audit) | Static import-graph analysis: circular imports, orphan modules, unused dependencies |
+| [`@studnicky/inspect`](packages/inspect) | Run a project's own `tsc`/`eslint` and report structured pass/fail results |
+
 ## Development
 
 ```sh
 pnpm install
-pnpm run ci
+pnpm run ci      # root package first — its test script builds dist/, which packages/* depend on
+pnpm -r run ci   # then every package under packages/* (pnpm -r excludes the workspace root by design)
 ```
-
-`pnpm run ci` runs typecheck, lint, test typecheck, and the test suite.
 
 The Pages social preview is generated from the canonical transparent logo and the package version:
 
