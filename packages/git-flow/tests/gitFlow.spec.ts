@@ -261,13 +261,22 @@ describe('git-flow suite', () => {
 
   })
 
-  test('commit-check command: --strict throws (non-zero CLI exit) instead of returning valid:false', async () => {
+  test('commit-check command: throws by default (non-zero CLI exit) instead of returning valid:false', async () => {
 
     const app = createGitFlowApp()
     await assert.rejects(
-      async () => app.run('commit-check', {branch: 'feature/x', message: 'did a thing wrong', strict: true}),
+      async () => app.run('commit-check', {branch: 'feature/x', message: 'did a thing wrong'}),
       /Invalid commit message/u
     )
+
+  })
+
+  test('commit-check command: --lenient returns valid:false instead of throwing', async () => {
+
+    const app = createGitFlowApp()
+    const result = await app.run('commit-check', {branch: 'feature/x', lenient: true, message: 'did a thing wrong'}) as Record<string, unknown> | undefined
+
+    assert.equal(result?.valid, false)
 
   })
 

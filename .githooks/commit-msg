@@ -8,4 +8,4 @@ if [ ! -f "$CLI" ]; then
   exit 0
 fi
 
-node "$CLI" commit-check --file "$1" --strict
+node "$CLI" commit-check --file "$1"

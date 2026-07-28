@@ -102,7 +102,7 @@ export function createGitFlowApp (): Mnemotek {
   })
 
   app.command({
-    description: 'Validate a commit message against Conventional Commits. Reads --message directly or --file (as git\'s commit-msg hook does).',
+    description: 'Validate a commit message against Conventional Commits; throws on an invalid message unless --lenient. Reads --message directly or --file (as git\'s commit-msg hook does).',
     name: 'commit-check',
     runner: (payload) => {
 
@@ -119,7 +119,7 @@ export function createGitFlowApp (): Mnemotek {
 
       const result = validateCommitMessage({branch, message})
 
-      if (payload.strict === true && !result.valid) {
+      if (payload.lenient !== true && !result.valid) {
 
         throw new Error(`Invalid commit message "${result.subject}". Expected: type(scope)?: description, one of ${CONVENTIONAL_COMMIT_TYPES.join(', ')}.`)
 
@@ -133,8 +133,8 @@ export function createGitFlowApp (): Mnemotek {
       properties: {
         branch: {description: 'Branch to check for a back-merge exemption. Defaults to the current branch.', type: 'string'},
         file: {description: 'Path to a file containing the commit message (as git passes to commit-msg).', type: 'string'},
-        message: {description: 'The commit message to validate.', type: 'string'},
-        strict: {description: 'Throw (non-zero exit as a CLI) instead of returning valid:false. Use this in a commit-msg hook.', type: 'boolean'}
+        lenient: {description: 'Return valid:false instead of throwing on an invalid message. Use this for introspection (e.g. an agent inspecting why a message failed); a commit-msg hook or CI gate should omit this.', type: 'boolean'},
+        message: {description: 'The commit message to validate.', type: 'string'}
       },
       type: 'object'
     }
