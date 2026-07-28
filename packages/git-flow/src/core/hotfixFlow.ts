@@ -1,6 +1,6 @@
 import * as gitPrimitives from './gitPrimitives.js'
 import * as githubPrimitives from './githubPrimitives.js'
-import {bumpVersion, getCurrentVersion, updateChangelog, updatePackageVersion} from './versioning.js'
+import {bumpVersion, getCurrentVersion, updatePackageVersion} from './versioning.js'
 
 export interface HotfixFlowResult {
   readonly [key: string]: unknown
@@ -56,8 +56,7 @@ export function hotfixFlow (input: {
   steps.push(`created ${hotfixBranch}`)
 
   updatePackageVersion(root, newVersion)
-  updateChangelog({newVersion, root, summary: `Hotfix ${tag}.`})
-  steps.push(`bumped version to ${newVersion} and updated CHANGELOG.md`)
+  steps.push(`bumped version to ${newVersion}`)
 
   gitPrimitives.commitAll(`fix(release): ${tag}`)
   steps.push('committed hotfix changes')

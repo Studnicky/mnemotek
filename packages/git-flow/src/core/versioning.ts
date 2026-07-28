@@ -48,37 +48,3 @@ export function updatePackageVersion (root: string, newVersion: string): void {
   writeFileSync(packageJsonPath, `${JSON.stringify(packageData, null, 2)}\n`)
 
 }
-
-export function updateChangelog (input: {
-  readonly newVersion: string
-  readonly root: string
-  readonly summary: string
-}): void {
-
-  const changelogPath = join(input.root, 'CHANGELOG.md')
-  const date = new Date().toISOString().slice(0, 10)
-  const entry = `## [${input.newVersion}] - ${date}\n\n${input.summary}\n\n`
-
-  if (!existsSync(changelogPath)) {
-
-    writeFileSync(changelogPath, `# Changelog\n\n${entry}`)
-    return
-
-  }
-
-  const existing = readFileSync(changelogPath, 'utf8')
-  const headingMatch = /^#\s+Changelog\s*\n/mu.exec(existing)
-
-  if (headingMatch === null) {
-
-    writeFileSync(changelogPath, `# Changelog\n\n${entry}${existing}`)
-    return
-
-  }
-
-  const insertAt = headingMatch.index + headingMatch[0].length
-  const updated = `${existing.slice(0, insertAt)}\n${entry}${existing.slice(insertAt)}`
-
-  writeFileSync(changelogPath, updated)
-
-}

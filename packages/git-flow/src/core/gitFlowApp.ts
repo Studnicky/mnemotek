@@ -60,7 +60,7 @@ export function createGitFlowApp (): Mnemotek {
         major: {description: 'Major version bump.', type: 'boolean'},
         minor: {description: 'Minor version bump.', type: 'boolean'},
         repo: {description: 'owner/repo. Defaults to the current repo.', type: 'string'},
-        root: {description: 'Project root containing package.json/CHANGELOG.md.', type: 'string'},
+        root: {description: 'Project root containing package.json.', type: 'string'},
         version: {description: 'Explicit version (e.g. 1.2.3). Overrides bump flags.', type: 'string'}
       },
       type: 'object'
@@ -83,7 +83,7 @@ export function createGitFlowApp (): Mnemotek {
         direct: {description: 'Skip PR and merge directly (only if main is unprotected).', type: 'boolean'},
         dryRun: {description: 'Preview the hotfix without making changes.', type: 'boolean'},
         repo: {description: 'owner/repo. Defaults to the current repo.', type: 'string'},
-        root: {description: 'Project root containing package.json/CHANGELOG.md.', type: 'string'},
+        root: {description: 'Project root containing package.json.', type: 'string'},
         version: {description: 'Explicit version (e.g. 1.2.4). Defaults to a patch bump.', type: 'string'}
       },
       type: 'object'
