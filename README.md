@@ -108,10 +108,9 @@ This repo is a pnpm workspace. The root `@studnicky/mnemotek` is the library; ev
 
 ```sh
 pnpm install
-pnpm -r run ci
+pnpm run ci      # root package first — its test script builds dist/, which packages/* depend on
+pnpm -r run ci   # then every package under packages/* (pnpm -r excludes the workspace root by design)
 ```
-
-`pnpm -r run ci` runs typecheck, lint, and tests across the root package and every package under `packages/*`.
 
 The Pages social preview is generated from the canonical transparent logo and the package version:
 

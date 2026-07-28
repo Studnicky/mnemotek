@@ -56,7 +56,8 @@ esac
 # ============================================================================
 
 echo ""
-echo "Running full CI checks before push (all workspace packages)..."
+echo "Running full CI checks before push (root, then all workspace packages)..."
+pnpm run ci
 pnpm -r run ci
 
 echo "Pre-push checks passed"

@@ -26,5 +26,8 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@studnicky'
 
+      - name: Run root package CI (builds dist/ that packages/* depend on)
+        run: pnpm run ci
+
       - name: Run CI checks (all workspace packages)
         run: pnpm -r run ci
