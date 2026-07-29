@@ -1,7 +1,0 @@
----
-"@studnicky/git-flow": minor
----
-
-`feature`/`release`/`hotfix` now adapt to the target repository's actual merge settings instead of hardcoding a strategy. `MergeMethodResolver` resolves a real, available method from an ordered preference list (`GithubPrimitives.repositoryMergeCapabilities` reads `allow_merge_commit`/`allow_rebase_merge`/`allow_squash_merge` from the repo). Feature branches into `develop` still prefer squash, falling back to merge or rebase if squash happens to be disabled. Release/hotfix promotions into `main` never squash — merge or rebase only — since squashing collapses the promoted branch's history that the subsequent back-merge into `develop` depends on; if a repo only allows squash, this now fails loudly with a clear error instead of silently squashing and corrupting the next back-merge. `MergeMethodEntity` gains `'rebase'` as a third valid value.
-
-`feature`/`release`/`hotfix` also now install a default PR template into the target repository before opening a PR, if — and only if — that repository doesn't already have one at any of GitHub's recognized template locations. Never overrides an existing template. The bundled default uses GitHub's alert callouts (`> [!CAUTION]`/`[!IMPORTANT]`/`[!TIP]`/`[!NOTE]`) to color-code Type of Change and Risk by actual severity, a collapsible `<details>` block for an optional change-flow diagram, and an adversarial-self-review gate ahead of the checklist instead of a habit-checked box list.
