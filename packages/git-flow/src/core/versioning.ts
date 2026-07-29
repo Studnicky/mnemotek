@@ -1,50 +1,102 @@
 import {existsSync, readFileSync, writeFileSync} from 'node:fs'
 import {join} from 'node:path'
 
-export type VersionBump = 'major' | 'minor' | 'patch'
+import type {VersionBumpEntity} from '../entities/index.js'
 
-export function getCurrentVersion (root: string): string | undefined {
+export class Versioning {
 
-  const packageJsonPath = join(root, 'package.json')
+  public static bumpVersion (currentVersion: string, bump: VersionBumpEntity.Type): string {
 
-  if (!existsSync(packageJsonPath)) {
+    const parts = currentVersion.split('.').map((part) => {
 
-    return undefined
+      const result = Number.parseInt(
+        part,
+        10
+      )
+      return result
+
+    })
+    const major = parts[0] ?? 0
+    const minor = parts[1] ?? 0
+    const patch = parts[2] ?? 0
+
+    if (bump === 'major') {
+
+      return `${String(major + 1)}.0.0`
+
+    }
+
+    if (bump === 'minor') {
+
+      return `${String(major)}.${String(minor + 1)}.0`
+
+    }
+
+    return `${String(major)}.${String(minor)}.${String(patch + 1)}`
 
   }
 
-  const packageData = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as {readonly version?: string}
-  return packageData.version
+  public static computeVersion (input: {bump: VersionBumpEntity.Type;
+    defaultVersion: string;
+    requestedVersion: string | undefined;
+    root: string;}): {newVersion: string;
+    previousVersion: string | undefined;} {
 
-}
-
-export function bumpVersion (currentVersion: string, bump: VersionBump): string {
-
-  const parts = currentVersion.split('.').map((part) => Number.parseInt(part, 10))
-  const [major, minor, patch] = [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0]
-
-  if (bump === 'major') {
-
-    return `${String(major + 1)}.0.0`
-
-  }
-
-  if (bump === 'minor') {
-
-    return `${String(major)}.${String(minor + 1)}.0`
+    const {bump, defaultVersion, requestedVersion, root} = input
+    const previousVersion = Versioning.getCurrentVersion(root)
+    const newVersion = requestedVersion ?? (previousVersion === undefined
+      ? defaultVersion
+      : Versioning.bumpVersion(
+        previousVersion,
+        bump
+      ))
+    return {newVersion,
+      previousVersion}
 
   }
 
-  return `${String(major)}.${String(minor)}.${String(patch + 1)}`
+  public static getCurrentVersion (root: string): string | undefined {
 
-}
+    const packageJsonPath = join(
+      root,
+      'package.json'
+    )
 
-export function updatePackageVersion (root: string, newVersion: string): void {
+    if (!existsSync(packageJsonPath)) {
 
-  const packageJsonPath = join(root, 'package.json')
-  const packageData = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as Record<string, unknown>
+      return undefined
 
-  packageData.version = newVersion
-  writeFileSync(packageJsonPath, `${JSON.stringify(packageData, null, 2)}\n`)
+    }
+
+    const packageData = JSON.parse(readFileSync(
+      packageJsonPath,
+      'utf8'
+    )) as {readonly version?: string}
+    return packageData.version
+
+  }
+
+  public static updatePackageVersion (root: string, newVersion: string): void {
+
+    const packageJsonPath = join(
+      root,
+      'package.json'
+    )
+    const packageData = JSON.parse(readFileSync(
+      packageJsonPath,
+      'utf8'
+    )) as Record<string, unknown>
+
+    packageData.version = newVersion
+    writeFileSync(
+      packageJsonPath,
+      `${JSON.stringify(
+        packageData,
+        null,
+        2
+      )}\n`
+    )
+
+  }
 
 }

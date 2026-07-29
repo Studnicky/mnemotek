@@ -4,80 +4,171 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {describe, test} from 'node:test'
 
-import {checkGitignore} from '../src/core/checkGitignore.js'
-import {fixGitignore} from '../src/core/fixGitignore.js'
-import {fixPackageJson} from '../src/core/fixPackageJson.js'
-import {createConfigStandardsApp} from '../src/core/configStandardsApp.js'
+import {ConfigStandardsApp} from '../src/core/configStandardsApp.js'
+import {GitignoreStandards} from '../src/core/gitignoreStandards.js'
+import {PackageJsonStandards} from '../src/core/packageJsonStandards.js'
 
-describe('config-standards suite', () => {
+void describe(
+  'config-standards suite',
+  () => {
 
-  test('checkGitignore: reports all lines missing with no file', () => {
+    void test(
+      'GitignoreStandards.check: reports all lines missing with no file',
+      () => {
 
-    const dir = mkdtempSync(join(tmpdir(), 'config-standards-test-'))
+        const dir = mkdtempSync(join(
+          tmpdir(),
+          'config-standards-test-'
+        ))
 
-    try {
+        try {
 
-      const result = checkGitignore(dir)
-      assert.equal(result.ok, false)
-      assert.equal(result.missing.length, 3)
+          const result = GitignoreStandards.check(dir)
+          assert.equal(
+            result.ok,
+            false
+          )
+          assert.equal(
+            result.missing.length,
+            4
+          )
 
-    } finally {
+        } finally {
 
-      rmSync(dir, {force: true, recursive: true})
+          rmSync(
+            dir,
+            {force: true,
+              recursive: true}
+          )
 
-    }
+        }
 
-  })
+      }
+    )
 
-  test('fixGitignore: appends missing lines and check passes afterward', () => {
+    void test(
+      'GitignoreStandards.fix: appends missing lines and check passes afterward',
+      () => {
 
-    const dir = mkdtempSync(join(tmpdir(), 'config-standards-test-'))
+        const dir = mkdtempSync(join(
+          tmpdir(),
+          'config-standards-test-'
+        ))
 
-    try {
+        try {
 
-      writeFileSync(join(dir, '.gitignore'), 'node_modules/\n')
-      const fixResult = fixGitignore(dir)
-      assert.deepEqual([...fixResult.added].sort(), ['*.tsbuildinfo', 'dist/'])
+          writeFileSync(
+            join(
+              dir,
+              '.gitignore'
+            ),
+            'node_modules/\n'
+          )
+          const fixResult = GitignoreStandards.fix(dir)
+          assert.deepEqual(
+            [...fixResult.added].sort(),
+            [
+              '*.tsbuildinfo',
+              '.redactor/',
+              'dist/'
+            ]
+          )
 
-      const checkResult = checkGitignore(dir)
-      assert.equal(checkResult.ok, true)
+          const checkResult = GitignoreStandards.check(dir)
+          assert.equal(
+            checkResult.ok,
+            true
+          )
 
-    } finally {
+        } finally {
 
-      rmSync(dir, {force: true, recursive: true})
+          rmSync(
+            dir,
+            {force: true,
+              recursive: true}
+          )
 
-    }
+        }
 
-  })
+      }
+    )
 
-  test('fixPackageJson: fills license, leaves engines/repository as remaining', () => {
+    void test(
+      'PackageJsonStandards.fix: fills license, leaves engines/repository as remaining',
+      () => {
 
-    const dir = mkdtempSync(join(tmpdir(), 'config-standards-test-'))
+        const dir = mkdtempSync(join(
+          tmpdir(),
+          'config-standards-test-'
+        ))
 
-    try {
+        try {
 
-      writeFileSync(join(dir, 'package.json'), JSON.stringify({name: 'x'}))
-      const fixResult = fixPackageJson(dir)
-      assert.deepEqual(fixResult.added, ['license'])
-      assert.deepEqual([...fixResult.remaining].sort(), ['engines', 'repository'])
+          writeFileSync(
+            join(
+              dir,
+              'package.json'
+            ),
+            JSON.stringify({name: 'x'})
+          )
+          const fixResult = PackageJsonStandards.fix(dir)
+          assert.deepEqual(
+            fixResult.added,
+            ['license']
+          )
+          assert.deepEqual(
+            [...fixResult.remaining].sort(),
+            [
+              'engines',
+              'repository'
+            ]
+          )
 
-      const written = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as Record<string, unknown>
-      assert.equal(written.license, 'MIT')
+          const written = JSON.parse(readFileSync(
+            join(
+              dir,
+              'package.json'
+            ),
+            'utf8'
+          )) as Record<string, unknown>
+          assert.equal(
+            written.license,
+            'MIT'
+          )
 
-    } finally {
+        } finally {
 
-      rmSync(dir, {force: true, recursive: true})
+          rmSync(
+            dir,
+            {force: true,
+              recursive: true}
+          )
 
-    }
+        }
 
-  })
+      }
+    )
 
-  test('manifest: exposes check and fix commands', () => {
+    void test(
+      'manifest: exposes check and fix commands',
+      () => {
 
-    const app = createConfigStandardsApp()
-    const names = app.manifest().commands.map((command) => command.name).sort()
-    assert.deepEqual(names, ['check', 'fix'])
+        const app = ConfigStandardsApp.createConfigStandardsApp()
+        const names = app.manifest().commands.map((command) => {
 
-  })
+          const result = command.name; return result
 
-})
+        }).sort()
+        assert.deepEqual(
+          names,
+          [
+            'check',
+            'fix'
+          ]
+        )
+
+      }
+    )
+
+  }
+)

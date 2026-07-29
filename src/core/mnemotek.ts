@@ -125,33 +125,15 @@ export class Mnemotek {
   }
 
   public manifest (): Readonly<{
-    readonly commands: ReadonlyArray<{
-      readonly description: CommandDescriptionEntity.Type;
-      readonly hasResultSchema: boolean;
-      readonly hasRunner: boolean;
-      readonly inputSchema: SchemaObjectInterface | undefined;
-      readonly name: CommandNameEntity.Type;
-      readonly resultSchema: SchemaObjectInterface | undefined;
-      readonly subcommands: readonly unknown[];
-    }>;
+    readonly commands: readonly mnemotekContract.ManifestCommandInterface[];
     readonly description: CommandDescriptionEntity.Type;
     readonly name: CommandNameEntity.Type;
     readonly version: CommandDescriptionEntity.Type;
   }> {
 
-    const manifestCommands: Array<{
-      readonly description: CommandDescriptionEntity.Type;
-      readonly hasResultSchema: boolean;
-      readonly hasRunner: boolean;
-      readonly inputSchema: SchemaObjectInterface | undefined;
-      readonly name: CommandNameEntity.Type;
-      readonly resultSchema: SchemaObjectInterface | undefined;
-      readonly subcommands: readonly unknown[];
-    }> = []
+    const manifestCommands = this.mapCommands((descriptor) => {
 
-    for (const descriptor of this.#commands.values()) {
-
-      manifestCommands.push({
+      return {
         description: descriptor.description,
         hasResultSchema: descriptor.resultSchema !== undefined,
         hasRunner: descriptor.runner !== undefined,
@@ -159,12 +141,12 @@ export class Mnemotek {
         name: descriptor.name,
         resultSchema: descriptor.resultSchema,
         subcommands: manifestSubcommands
-      })
+      }
 
-    }
+    })
 
     return {
-      commands: Object.freeze(manifestCommands),
+      commands: manifestCommands,
       description: this.#description,
       name: this.#name,
       version: this.#version
@@ -208,41 +190,27 @@ export class Mnemotek {
   }
 
   public skillManifest (): Readonly<{
-    readonly commands: ReadonlyArray<{
-      readonly description: CommandDescriptionEntity.Type;
-      readonly name: CommandNameEntity.Type;
-      readonly resultSchema: SchemaObjectInterface | undefined;
-      readonly schema: SchemaObjectInterface | undefined;
-      readonly subcommands: readonly unknown[];
-    }>;
+    readonly commands: readonly mnemotekContract.SkillManifestCommandInterface[];
     readonly configSchema: SchemaObjectInterface;
     readonly description: CommandDescriptionEntity.Type;
     readonly name: CommandNameEntity.Type;
     readonly version: CommandDescriptionEntity.Type;
   }> {
 
-    const manifestCommands: Array<{
-      readonly description: CommandDescriptionEntity.Type;
-      readonly name: CommandNameEntity.Type;
-      readonly resultSchema: SchemaObjectInterface | undefined;
-      readonly schema: SchemaObjectInterface | undefined;
-      readonly subcommands: readonly unknown[];
-    }> = []
+    const manifestCommands = this.mapCommands((descriptor) => {
 
-    for (const descriptor of this.#commands.values()) {
-
-      manifestCommands.push({
+      return {
         description: descriptor.description,
         name: descriptor.name,
         resultSchema: descriptor.resultSchema,
         schema: descriptor.schema,
         subcommands: manifestSubcommands
-      })
+      }
 
-    }
+    })
 
     return {
-      commands: Object.freeze(manifestCommands),
+      commands: manifestCommands,
       configSchema: emptyCommandConfigurationSchema,
       description: this.#description,
       name: this.#name,
@@ -286,13 +254,7 @@ export class Mnemotek {
   }
 
   public skillManifestOutput (metaOnly = false): Readonly<{
-    readonly commands?: ReadonlyArray<{
-      readonly description: CommandDescriptionEntity.Type;
-      readonly name: CommandNameEntity.Type;
-      readonly resultSchema: SchemaObjectInterface | undefined;
-      readonly schema: SchemaObjectInterface | undefined;
-      readonly subcommands: readonly unknown[];
-    }>;
+    readonly commands?: readonly mnemotekContract.SkillManifestCommandInterface[];
     readonly configSchema?: SchemaObjectInterface;
     readonly description: CommandDescriptionEntity.Type;
     readonly mcpBin: CommandNameEntity.Type;
@@ -317,6 +279,20 @@ export class Mnemotek {
       ...this.skillManifest(),
       mcpBin: commandLineToolName
     }
+
+  }
+
+  private mapCommands<TManifestCommand> (transform: (descriptor: mnemotekContract.CommandDescriptorInterface) => TManifestCommand): readonly TManifestCommand[] {
+
+    const results: TManifestCommand[] = []
+
+    for (const descriptor of this.#commands.values()) {
+
+      results.push(transform(descriptor))
+
+    }
+
+    return Object.freeze(results)
 
   }
 

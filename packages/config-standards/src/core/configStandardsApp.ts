@@ -1,68 +1,76 @@
-import {Mnemotek} from '@studnicky/mnemotek'
+import {Mnemotek, MnemotekAppFactory, PayloadOptions} from '@studnicky/mnemotek'
 
-import {checkGitignore} from './checkGitignore.js'
-import {checkPackageJson} from './checkPackageJson.js'
-import {fixGitignore} from './fixGitignore.js'
-import {fixPackageJson} from './fixPackageJson.js'
+import type {ConfigStandardsCheckResultEntity, ConfigStandardsFixResultEntity} from '../entities/index.js'
 
-function resolveRoot (payload: Record<string, unknown>): string {
+import {GitignoreStandards} from './gitignoreStandards.js'
+import {PackageJsonStandards} from './packageJsonStandards.js'
 
-  return typeof payload.root === 'string' ? payload.root : process.cwd()
-
+const ROOT_OPTION_SCHEMA = {
+  description: 'Project root. Defaults to the current directory.',
+  type: 'string'
 }
 
-export function createConfigStandardsApp (): Mnemotek {
+export class ConfigStandardsApp {
 
-  const app = new Mnemotek({
-    description: 'Check and fix common project config files against a small built-in standards set. No server, no external services.',
-    name: 'config-standards-tool',
-    version: '0.1.0'
-  })
+  public static createConfigStandardsApp (): Mnemotek {
 
-  app.command({
-    description: 'Check .gitignore and package.json against the built-in standards set.',
-    name: 'check',
-    runner: (payload) => {
+    const app = new Mnemotek({
+      description: 'Check and fix common project config files against a small built-in standards set. No server, no external services.',
+      name: 'config-standards-tool',
+      version: '0.1.0'
+    })
 
-      const root = resolveRoot(payload)
-
-      return {
-        gitignore: checkGitignore(root),
-        packageJson: checkPackageJson(root)
-      }
-
-    },
-    schema: {
-      additionalProperties: false,
-      properties: {
-        root: {description: 'Project root. Defaults to the current directory.', type: 'string'}
+    MnemotekAppFactory.registerCommands(
+      app,
+      {
+        description: 'Check .gitignore and package.json against the built-in standards set.',
+        name: 'check',
+        runner: ConfigStandardsApp.checkRunner,
+        schema: {
+          additionalProperties: false,
+          properties: {
+            root: ROOT_OPTION_SCHEMA
+          },
+          type: 'object'
+        }
       },
-      type: 'object'
-    }
-  })
-
-  app.command({
-    description: 'Fix .gitignore (append missing lines) and package.json (fill auto-fillable defaults like license).',
-    name: 'fix',
-    runner: (payload) => {
-
-      const root = resolveRoot(payload)
-
-      return {
-        gitignore: fixGitignore(root),
-        packageJson: fixPackageJson(root)
+      {
+        description: 'Fix .gitignore (append missing lines) and package.json (fill auto-fillable defaults like license).',
+        name: 'fix',
+        runner: ConfigStandardsApp.fixRunner,
+        schema: {
+          additionalProperties: false,
+          properties: {
+            root: ROOT_OPTION_SCHEMA
+          },
+          type: 'object'
+        }
       }
+    )
+    return app
 
-    },
-    schema: {
-      additionalProperties: false,
-      properties: {
-        root: {description: 'Project root. Defaults to the current directory.', type: 'string'}
-      },
-      type: 'object'
+  }
+
+  private static readonly checkRunner = (payload: Record<string, unknown>): ConfigStandardsCheckResultEntity.Type => {
+
+    const root = PayloadOptions.resolveRoot(payload)
+
+    return {
+      gitignore: GitignoreStandards.check(root),
+      packageJson: PackageJsonStandards.check(root)
     }
-  })
 
-  return app
+  }
+
+  private static readonly fixRunner = (payload: Record<string, unknown>): ConfigStandardsFixResultEntity.Type => {
+
+    const root = PayloadOptions.resolveRoot(payload)
+
+    return {
+      gitignore: GitignoreStandards.fix(root),
+      packageJson: PackageJsonStandards.fix(root)
+    }
+
+  }
 
 }

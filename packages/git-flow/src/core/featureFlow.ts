@@ -1,202 +1,277 @@
-import {branchPrefixToConventionalType} from './conventionalCommits.js'
-import * as gitPrimitives from './gitPrimitives.js'
-import * as githubPrimitives from './githubPrimitives.js'
+import type {BranchStructureEntity, FeatureFlowResultEntity} from '../entities/index.js'
 
-export interface FeatureFlowResult {
-  readonly [key: string]: unknown
-  readonly branch: string
-  readonly commits: readonly {readonly hash: string; readonly subject: string}[]
-  readonly error: string | undefined
-  readonly mode: string
-  readonly prUrl: string | undefined
-  readonly pushed: boolean
-  readonly targetBranch: string
-}
+import {BranchTypeEntity} from '../entities/index.js'
+import {ConventionalCommits} from './conventionalCommits.js'
+import {GithubPrimitives} from './githubPrimitives.js'
+import {GitPrimitives} from './gitPrimitives.js'
 
-// hotfix and release are their own dedicated commands, not a --type here.
-const BRANCH_TYPES = ['feature', 'bugfix', 'chore', 'docs', 'test', 'refactor', 'perf', 'ci', 'build'] as const
-export type BranchType = typeof BRANCH_TYPES[number]
+export class FeatureFlow {
 
-function isBranchType (value: string): value is BranchType {
+  public static featureFlow (input: {branch?: string;
+    create?: boolean;
+    direct?: boolean;
+    push?: boolean;
+    repository?: string;
+    type?: string;}): FeatureFlowResultEntity.Type {
 
-  return (BRANCH_TYPES as readonly string[]).includes(value)
+    const branchType = input.type !== undefined && FeatureFlow.isBranchType(input.type)
+      ? input.type
+      : 'feature'
 
-}
+    const structure = GitPrimitives.detectBranchStructure()
+    const targetBranch = structure.development ?? structure.production
+    const protectedTarget = GithubPrimitives.isBranchProtected(
+      targetBranch,
+      input.repository
+    )
+    const usePr = protectedTarget || input.direct !== true
 
-function branchTypePrefixes (): readonly string[] {
+    let mode = 'status'
 
-  return BRANCH_TYPES.map((type) => `${type}/`)
+    if (input.push === true) {
 
-}
+      mode = 'push'
 
-function formatBranchName (name: string, type: BranchType): string {
+    } else if (input.create === true) {
 
-  return branchTypePrefixes().some((prefix) => name.startsWith(prefix)) ? name : `${type}/${name}`
+      mode = 'create'
 
-}
-
-function startsWithKnownPrefix (branch: string): boolean {
-
-  return branchTypePrefixes().some((prefix) => branch.startsWith(prefix))
-
-}
-
-
-export function featureFlow (input: {
-  readonly branch?: string
-  readonly create?: boolean
-  readonly direct?: boolean
-  readonly push?: boolean
-  readonly repo?: string
-  readonly type?: string
-}): FeatureFlowResult {
-
-  const branchType = input.type !== undefined && isBranchType(input.type) ? input.type : 'feature'
-
-  const structure = gitPrimitives.detectBranchStructure()
-  const targetBranch = structure.development ?? structure.production
-  const protectedTarget = githubPrimitives.isBranchProtected(targetBranch, input.repo)
-  const usePr = protectedTarget || input.direct !== true
-  const mode = input.push === true ? 'push' : input.create === true ? 'create' : 'status'
-
-  try {
-
-    gitPrimitives.assertCleanRepoState()
-
-  } catch (error) {
-
-    return {
-      branch: structure.current,
-      commits: [],
-      error: error instanceof Error ? error.message : String(error),
-      mode,
-      prUrl: undefined,
-      pushed: false,
-      targetBranch
     }
 
-  }
+    try {
 
-  if (input.push === true) {
+      GitPrimitives.assertCleanRepositoryState()
+
+    } catch (error) {
+
+      return {
+        branch: structure.current,
+        commits: [],
+        error: error instanceof Error
+          ? error.message
+          : String(error),
+        mode,
+        pushed: false,
+        targetBranch
+      }
+
+    }
+
+    if (input.push === true) {
+
+      return FeatureFlow.push({repository: input.repository,
+        structure,
+        targetBranch,
+        usePr})
+
+    }
+
+    if (input.create === true) {
+
+      return FeatureFlow.create(
+        input.branch,
+        branchType,
+        targetBranch
+      )
+
+    }
 
     const branch = structure.current
+    const commits = FeatureFlow.startsWithKnownPrefix(branch)
+      ? GitPrimitives.getCommitsAhead(targetBranch)
+      : []
 
-    if (!startsWithKnownPrefix(branch)) {
-
-      return {
-        branch,
-        commits: [],
-        error: `Not on a branch prefixed with one of: ${BRANCH_TYPES.join(', ')}.`,
-        mode: 'push',
-        prUrl: undefined,
-        pushed: false,
-        targetBranch
-      }
-
-    }
-
-    if (gitPrimitives.hasUncommittedChanges()) {
-
-      return {
-        branch,
-        commits: [],
-        error: 'Uncommitted changes. Commit first.',
-        mode: 'push',
-        prUrl: undefined,
-        pushed: false,
-        targetBranch
-      }
-
-    }
-
-    const commits = gitPrimitives.getCommitsAhead(targetBranch)
-
-    gitPrimitives.pushBranch(branch)
-
-    if (!usePr) {
-
-      return {branch, commits, error: undefined, mode: 'push', prUrl: undefined, pushed: true, targetBranch}
-
-    }
-
-    const [prefix, ...nameParts] = branch.split('/')
-    // Branch-type prefix and Conventional Commits type are different vocabularies:
-    // the branch says "bugfix", the commit type is "fix" (bugfix isn't a valid
-    // Conventional Commits type). feature -> feat is the other divergence.
-    const conventionalType = branchPrefixToConventionalType(prefix ?? 'chore')
-    const prUrl = githubPrimitives.createPr({
-      base: targetBranch,
-      body: `Branch \`${branch}\` (${String(commits.length)} commit(s)).`,
-      repo: input.repo,
-      title: `${conventionalType}: ${nameParts.join('/')}`
-    })
-
-    githubPrimitives.waitForChecks({repo: input.repo})
-    githubPrimitives.mergePr({method: 'squash', repo: input.repo})
-
-    return {branch, commits, error: undefined, mode: 'push', prUrl, pushed: true, targetBranch}
+    return {branch,
+      commits,
+      mode: 'status',
+      pushed: false,
+      targetBranch}
 
   }
 
-  if (input.create === true) {
+  private static branchTypePrefixes (): readonly string[] {
 
-    if (input.branch === undefined) {
+    const prefixes = BranchTypeEntity.Schema.enum.map((type) => {
+
+      const prefix = `${type}/`
+      return prefix
+
+    })
+    return prefixes
+
+  }
+
+  private static create (branchName: string | undefined, branchType: BranchTypeEntity.Type, targetBranch: string): FeatureFlowResultEntity.Type {
+
+    if (branchName === undefined) {
 
       return {
         branch: '',
         commits: [],
         error: 'A branch name is required to create a branch.',
         mode: 'create',
-        prUrl: undefined,
         pushed: false,
         targetBranch
       }
 
     }
 
-    const branchName = formatBranchName(input.branch, branchType)
+    const formattedBranchName = FeatureFlow.formatBranchName(
+      branchName,
+      branchType
+    )
 
-    if (gitPrimitives.branchExists(branchName)) {
+    if (GitPrimitives.branchExists(formattedBranchName)) {
 
-      gitPrimitives.checkoutBranch(branchName)
+      GitPrimitives.checkoutBranch(formattedBranchName)
 
       return {
-        branch: branchName,
-        commits: gitPrimitives.getCommitsAhead(targetBranch),
-        error: undefined,
+        branch: formattedBranchName,
+        commits: GitPrimitives.getCommitsAhead(targetBranch),
         mode: 'create',
-        prUrl: undefined,
         pushed: false,
         targetBranch
       }
 
     }
 
-    if (gitPrimitives.hasUncommittedChanges()) {
+    if (GitPrimitives.hasUncommittedChanges()) {
 
       return {
         branch: '',
         commits: [],
         error: 'Uncommitted changes. Commit first.',
         mode: 'create',
-        prUrl: undefined,
         pushed: false,
         targetBranch
       }
 
     }
 
-    gitPrimitives.checkoutBranch(targetBranch)
-    gitPrimitives.pullBranch(targetBranch)
-    gitPrimitives.createBranch(branchName, targetBranch)
+    GitPrimitives.checkoutBranch(targetBranch)
+    GitPrimitives.pullBranch(targetBranch)
+    GitPrimitives.createBranch(
+      formattedBranchName,
+      targetBranch
+    )
 
-    return {branch: branchName, commits: [], error: undefined, mode: 'create', prUrl: undefined, pushed: false, targetBranch}
+    return {branch: formattedBranchName,
+      commits: [],
+      mode: 'create',
+      pushed: false,
+      targetBranch}
 
   }
 
-  const branch = structure.current
-  const commits = startsWithKnownPrefix(branch) ? gitPrimitives.getCommitsAhead(targetBranch) : []
+  private static formatBranchName (name: string, type: BranchTypeEntity.Type): string {
 
-  return {branch, commits, error: undefined, mode: 'status', prUrl: undefined, pushed: false, targetBranch}
+    return FeatureFlow.branchTypePrefixes().some((prefix) => {
+
+      const result = name.startsWith(prefix)
+      return result
+
+    })
+      ? name
+      : `${type}/${name}`
+
+  }
+
+  private static isBranchType (value: string): value is BranchTypeEntity.Type {
+
+    const result = BranchTypeEntity.validate(value)
+    return result
+
+  }
+
+  private static push (input: {repository: string | undefined;
+    structure: BranchStructureEntity.Type;
+    targetBranch: string;
+    usePr: boolean;}): FeatureFlowResultEntity.Type {
+
+    const {repository, structure, targetBranch, usePr} = input
+    const branch = structure.current
+
+    if (!FeatureFlow.startsWithKnownPrefix(branch)) {
+
+      return {
+        branch,
+        commits: [],
+        error: `Not on a branch prefixed with one of: ${BranchTypeEntity.Schema.enum.join(', ')}.`,
+        mode: 'push',
+        pushed: false,
+        targetBranch
+      }
+
+    }
+
+    if (GitPrimitives.hasUncommittedChanges()) {
+
+      return {
+        branch,
+        commits: [],
+        error: 'Uncommitted changes. Commit first.',
+        mode: 'push',
+        pushed: false,
+        targetBranch
+      }
+
+    }
+
+    const commits = GitPrimitives.getCommitsAhead(targetBranch)
+
+    GitPrimitives.pushBranch(branch)
+
+    if (!usePr) {
+
+      return {branch,
+        commits,
+        mode: 'push',
+        pushed: true,
+        targetBranch}
+
+    }
+
+    const [
+      prefix,
+      ...nameParts
+    ] = branch.split('/')
+
+    /*
+     * Branch-type prefix and Conventional Commits type are different vocabularies:
+     * the branch says "bugfix", the commit type is "fix" (bugfix isn't a valid
+     * Conventional Commits type). feature -> feat is the other divergence.
+     */
+    const conventionalType = ConventionalCommits.branchPrefixToConventionalType(prefix ?? 'chore')
+    const prUrl = GithubPrimitives.createPr({
+      base: targetBranch,
+      body: `Branch \`${branch}\` (${String(commits.length)} commit(s)).`,
+      repository,
+      title: `${conventionalType}: ${nameParts.join('/')}`
+    })
+
+    GithubPrimitives.waitForChecks({repository})
+    GithubPrimitives.mergePr({method: 'squash',
+      repository})
+
+    return {branch,
+      commits,
+      mode: 'push',
+      prUrl,
+      pushed: true,
+      targetBranch}
+
+  }
+
+  private static startsWithKnownPrefix (branch: string): boolean {
+
+    const matches = FeatureFlow.branchTypePrefixes().some((prefix) => {
+
+      const matchesPrefix = branch.startsWith(prefix)
+      return matchesPrefix
+
+    })
+    return matches
+
+  }
 
 }

@@ -1,87 +1,123 @@
-import {Mnemotek} from '@studnicky/mnemotek'
+import {Mnemotek, MnemotekAppFactory, PayloadOptions} from '@studnicky/mnemotek'
 
-import {findCircularImports} from './findCircular.js'
-import {findOrphanModules} from './findOrphans.js'
-import {findUnusedDependencies} from './findUnusedDeps.js'
-import {buildModuleGraph} from './scanImports.js'
+import type {CircularResultEntity, OrphansResultEntity, UnusedDepsResultEntity} from '../entities/index.js'
+import type {ModuleGraphInterface} from '../interfaces/ModuleGraphInterface.js'
 
-function resolveRoot (payload: Record<string, unknown>): string {
+import {FindCircular} from './findCircular.js'
+import {FindOrphans} from './findOrphans.js'
+import {FindUnusedDeps} from './findUnusedDeps.js'
+import {ScanImports} from './scanImports.js'
 
-  return typeof payload.root === 'string' ? payload.root : process.cwd()
-
+const SOURCE_ROOT_OPTION_SCHEMA = {
+  description: 'Source root to scan (e.g. "src"). Defaults to the current directory.',
+  type: 'string'
 }
 
-export function createDepsAuditApp (): Mnemotek {
+export class DepsAuditApp {
 
-  const app = new Mnemotek({
-    description: 'Static import-graph analysis: circular deps, orphan modules, unused package.json dependencies. No server.',
-    name: 'deps-audit-tool',
-    version: '0.1.0'
-  })
+  public static createDepsAuditApp (): Mnemotek {
 
-  app.command({
-    description: 'Find circular import chains within a TypeScript source root.',
-    name: 'circular',
-    runner: (payload) => {
+    const app = new Mnemotek({
+      description: 'Static import-graph analysis: circular deps, orphan modules, unused package.json dependencies. No server.',
+      name: 'deps-audit-tool',
+      version: '0.1.0'
+    })
 
-      const root = resolveRoot(payload)
-      const graph = buildModuleGraph(root)
-      const cycles = findCircularImports(root, graph)
-
-      return {cycleCount: cycles.length, cycles, ok: cycles.length === 0}
-
-    },
-    schema: {
-      additionalProperties: false,
-      properties: {
-        root: {description: 'Source root to scan (e.g. "src"). Defaults to the current directory.', type: 'string'}
+    MnemotekAppFactory.registerCommands(
+      app,
+      {
+        description: 'Find circular import chains within a TypeScript source root.',
+        name: 'circular',
+        runner: DepsAuditApp.circularRunner,
+        schema: {
+          additionalProperties: false,
+          properties: {
+            root: SOURCE_ROOT_OPTION_SCHEMA
+          },
+          type: 'object'
+        }
       },
-      type: 'object'
-    }
-  })
-
-  app.command({
-    description: 'Find source files never imported by any other file in the scanned tree.',
-    name: 'orphans',
-    runner: (payload) => {
-
-      const root = resolveRoot(payload)
-      const graph = buildModuleGraph(root)
-      const orphans = findOrphanModules(root, graph)
-
-      return {ok: orphans.length === 0, orphanCount: orphans.length, orphans}
-
-    },
-    schema: {
-      additionalProperties: false,
-      properties: {
-        root: {description: 'Source root to scan (e.g. "src"). Defaults to the current directory.', type: 'string'}
+      {
+        description: 'Find source files never imported by any other file in the scanned tree.',
+        name: 'orphans',
+        runner: DepsAuditApp.orphansRunner,
+        schema: {
+          additionalProperties: false,
+          properties: {
+            root: SOURCE_ROOT_OPTION_SCHEMA
+          },
+          type: 'object'
+        }
       },
-      type: 'object'
-    }
-  })
+      {
+        description: 'Find package.json dependencies never referenced by a bare-specifier import in the scanned tree.',
+        name: 'unused-deps',
+        runner: DepsAuditApp.unusedDepsRunner,
+        schema: {
+          additionalProperties: false,
+          properties: {
+            root: {description: 'Project root containing package.json and the source tree. Defaults to the current directory.',
+              type: 'string'}
+          },
+          type: 'object'
+        }
+      }
+    )
+    return app
 
-  app.command({
-    description: 'Find package.json dependencies never referenced by a bare-specifier import in the scanned tree.',
-    name: 'unused-deps',
-    runner: (payload) => {
+  }
 
-      const root = resolveRoot(payload)
-      const graph = buildModuleGraph(root)
-      const unused = findUnusedDependencies(root, graph)
+  private static readonly circularRunner = (payload: Record<string, unknown>): CircularResultEntity.Type => {
 
-      return {ok: unused.length === 0, unused, unusedCount: unused.length}
+    const {graph, root} = DepsAuditApp.resolveGraph(payload)
+    const cycles = FindCircular.findCircularImports(
+      root,
+      graph
+    )
 
-    },
-    schema: {
-      additionalProperties: false,
-      properties: {
-        root: {description: 'Project root containing package.json and the source tree. Defaults to the current directory.', type: 'string'}
-      },
-      type: 'object'
-    }
-  })
+    return {cycleCount: cycles.length,
+      cycles,
+      ok: cycles.length === 0}
 
-  return app
+  }
+
+  private static readonly orphansRunner = (payload: Record<string, unknown>): OrphansResultEntity.Type => {
+
+    const {graph, root} = DepsAuditApp.resolveGraph(payload)
+    const orphans = FindOrphans.findOrphanModules(
+      root,
+      graph
+    )
+
+    return {ok: orphans.length === 0,
+      orphanCount: orphans.length,
+      orphans}
+
+  }
+
+  private static resolveGraph (payload: Record<string, unknown>): {graph: ModuleGraphInterface;
+    root: string;} {
+
+    const root = PayloadOptions.resolveRoot(payload)
+    const graph = ScanImports.buildModuleGraph(root)
+
+    return {graph,
+      root}
+
+  }
+
+  private static readonly unusedDepsRunner = (payload: Record<string, unknown>): UnusedDepsResultEntity.Type => {
+
+    const {graph, root} = DepsAuditApp.resolveGraph(payload)
+    const unused = FindUnusedDeps.findUnusedDependencies(
+      root,
+      graph
+    )
+
+    return {ok: unused.length === 0,
+      unused,
+      unusedCount: unused.length}
+
+  }
 
 }

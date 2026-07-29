@@ -78,8 +78,8 @@
             }
           }
         },
-        "envContent": "MNEMOTEK_INSPECT_MESSAGE=from-env\nMNEMOTEK_INSPECT_LIMITS_ATTEMPTS=19\nMNEMOTEK_INSPECT_TOKEN=env-token\n",
-        "envOverrides": {
+        "environmentContent": "MNEMOTEK_INSPECT_MESSAGE=from-env\nMNEMOTEK_INSPECT_LIMITS_ATTEMPTS=19\nMNEMOTEK_INSPECT_TOKEN=env-token\n",
+        "environmentOverrides": {
           "MNEMOTEK_INSPECT_MESSAGE": "from-process-env",
           "MNEMOTEK_INSPECT_COUNT": "77"
         },
@@ -119,7 +119,7 @@
             "token": "auto-token"
           }
         },
-        "envContent": "MNEMOTEK_INSPECT_LEVEL=20\nMNEMOTEK_INSPECT_TOKEN=env-token\n",
+        "environmentContent": "MNEMOTEK_INSPECT_LEVEL=20\nMNEMOTEK_INSPECT_TOKEN=env-token\n",
         "cliConfigPath": "custom.config.json",
         "cliConfigContent": {
           "inspect": {
@@ -251,7 +251,7 @@
       "input": {
         "schemaKey": "mcp-call-args",
         "toolName": "inspect",
-        "arguments": {
+        "toolArguments": {
           "message": "from-tool"
         },
         "expectedIsError": false,
@@ -265,7 +265,7 @@
         "schemaKey": "mcp-call-args",
         "expectedInvalidResult": true,
         "toolName": "inspect",
-        "arguments": {
+        "toolArguments": {
           "message": "from-tool"
         },
         "expectedIsError": true,

@@ -1,29 +1,135 @@
 import {readdirSync, readFileSync} from 'node:fs'
 import {dirname, extname, join, normalize, relative} from 'node:path'
 
-const IMPORT_PATTERN = /(?:import|export)\s+(?:[\w*{},\s]+\s+from\s+)?['"]([^'"]+)['"]/gu
+import type {ModuleGraphInterface} from '../interfaces/ModuleGraphInterface.js'
 
-export interface ModuleGraph {
-  readonly edges: ReadonlyMap<string, readonly string[]>
-  readonly externalSpecifiers: ReadonlySet<string>
-  readonly files: readonly string[]
-}
+import {SCAN_IMPORTS_PATTERNS} from './constants/ScanImportsConstants.js'
 
-function listSourceFiles (root: string): string[] {
+export class ScanImports {
 
-  const result: string[] = []
-  const stack = [root]
+  public static buildModuleGraph (root: string): ModuleGraphInterface {
 
-  while (stack.length > 0) {
+    const files = ScanImports.listSourceFiles(root)
+    const fileSet = new Set(files)
+    const edges = new Map<string, string[]>()
+    const externalSpecifiers = new Set<string>()
 
-    const current = stack.pop()
-    if (current === undefined) {
+    for (const file of files) {
 
-      continue
+      const targets = ScanImports.scanFileImports({externalSpecifiers,
+        file,
+        fileSet})
+
+      edges.set(
+        file,
+        targets
+      )
 
     }
 
-    for (const entry of readdirSync(current, {withFileTypes: true})) {
+    return {
+      edges,
+      externalSpecifiers,
+      files: files.map((file) => {
+
+        const relativeFile = relative(
+          root,
+          file
+        )
+        return relativeFile
+
+      })
+    }
+
+  }
+
+  private static listSourceFiles (root: string): string[] {
+
+    const result: string[] = []
+    const stack = [root]
+
+    while (stack.length > 0) {
+
+      const current = stack.pop()
+
+      if (current === undefined) {
+
+        continue
+
+      }
+
+      ScanImports.scanDirectory({current,
+        result,
+        stack})
+
+    }
+
+    return result
+
+  }
+
+  private static packageNameFromSpecifier (specifier: string): string {
+
+    const segments = specifier.split('/')
+    const first = segments[0] ?? specifier
+
+    if (specifier.startsWith('@')) {
+
+      const second = segments[1]
+      return second === undefined
+        ? first
+        : `${first}/${second}`
+
+    }
+
+    return first
+
+  }
+
+  private static resolveRelativeImport (fromFile: string, specifier: string, allFiles: ReadonlySet<string>): string | undefined {
+
+    const basePath = normalize(join(
+      dirname(fromFile),
+      specifier
+    )).replace(
+      SCAN_IMPORTS_PATTERNS.JS_EXTENSION,
+      '.ts'
+    )
+
+    if (allFiles.has(basePath)) {
+
+      return basePath
+
+    }
+
+    const indexPath = normalize(join(
+      basePath.replace(
+        SCAN_IMPORTS_PATTERNS.TS_EXTENSION,
+        ''
+      ),
+      'index.ts'
+    ))
+
+    if (allFiles.has(indexPath)) {
+
+      return indexPath
+
+    }
+
+    return undefined
+
+  }
+
+  private static scanDirectory (context: {current: string;
+    result: string[];
+    stack: string[];}): void {
+
+    const {current, result, stack} = context
+    const entries = readdirSync(
+      current,
+      {withFileTypes: true}
+    )
+    for (const entry of entries) {
 
       if (entry.name === 'node_modules' || entry.name === 'dist') {
 
@@ -31,7 +137,10 @@ function listSourceFiles (root: string): string[] {
 
       }
 
-      const fullPath = join(current, entry.name)
+      const fullPath = join(
+        current,
+        entry.name
+      )
 
       if (entry.isDirectory()) {
 
@@ -50,64 +159,22 @@ function listSourceFiles (root: string): string[] {
 
   }
 
-  return result
+  private static scanFileImports (context: {externalSpecifiers: Set<string>;
+    file: string;
+    fileSet: ReadonlySet<string>;}): string[] {
 
-}
-
-function packageNameFromSpecifier (specifier: string): string {
-
-  const segments = specifier.split('/')
-  const first = segments[0] ?? specifier
-
-  if (specifier.startsWith('@')) {
-
-    const second = segments[1]
-    return second === undefined ? first : `${first}/${second}`
-
-  }
-
-  return first
-
-}
-
-function resolveRelativeImport (fromFile: string, specifier: string, allFiles: ReadonlySet<string>): string | undefined {
-
-  const basePath = normalize(join(dirname(fromFile), specifier)).replace(/\.js$/u, '.ts')
-
-  if (allFiles.has(basePath)) {
-
-    return basePath
-
-  }
-
-  const indexPath = normalize(join(basePath.replace(/\.ts$/u, ''), 'index.ts'))
-
-  if (allFiles.has(indexPath)) {
-
-    return indexPath
-
-  }
-
-  return undefined
-
-}
-
-export function buildModuleGraph (root: string): ModuleGraph {
-
-  const files = listSourceFiles(root)
-  const fileSet = new Set(files)
-  const edges = new Map<string, string[]>()
-  const externalSpecifiers = new Set<string>()
-
-  for (const file of files) {
-
-    const content = readFileSync(file, 'utf8')
+    const {externalSpecifiers, file, fileSet} = context
+    const content = readFileSync(
+      file,
+      'utf8'
+    )
     const targets: string[] = []
 
-    IMPORT_PATTERN.lastIndex = 0
-    for (const match of content.matchAll(IMPORT_PATTERN)) {
+    SCAN_IMPORTS_PATTERNS.IMPORT_STATEMENT.lastIndex = 0
+    for (const match of content.matchAll(SCAN_IMPORTS_PATTERNS.IMPORT_STATEMENT)) {
 
       const specifier = match[1]
+
       if (specifier === undefined) {
 
         continue
@@ -116,12 +183,17 @@ export function buildModuleGraph (root: string): ModuleGraph {
 
       if (!specifier.startsWith('.')) {
 
-        externalSpecifiers.add(packageNameFromSpecifier(specifier))
+        externalSpecifiers.add(ScanImports.packageNameFromSpecifier(specifier))
         continue
 
       }
 
-      const resolved = resolveRelativeImport(file, specifier, fileSet)
+      const resolved = ScanImports.resolveRelativeImport(
+        file,
+        specifier,
+        fileSet
+      )
+
       if (resolved !== undefined) {
 
         targets.push(resolved)
@@ -130,14 +202,8 @@ export function buildModuleGraph (root: string): ModuleGraph {
 
     }
 
-    edges.set(file, targets)
+    return targets
 
-  }
-
-  return {
-    edges,
-    externalSpecifiers,
-    files: files.map((file) => relative(root, file))
   }
 
 }

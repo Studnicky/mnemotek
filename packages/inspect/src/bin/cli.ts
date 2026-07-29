@@ -2,7 +2,7 @@
 import {MnemotekCli} from '@studnicky/mnemotek'
 import process from 'node:process'
 
-import {createInspectApp} from '../core/inspectApp.js'
+import {InspectApp} from '../core/inspectApp.js'
 
-const exitCode = await MnemotekCli.execute(createInspectApp())
+const exitCode = await MnemotekCli.execute(InspectApp.createInspectApp())
 process.exitCode = exitCode

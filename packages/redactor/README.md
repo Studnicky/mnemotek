@@ -15,7 +15,7 @@ npm install @studnicky/redactor
 - `gain` — show cumulative savings across all recorded runs
 
 ```sh
-npx redactor-tool run --command git --args status
+npx redactor-tool run --command git --argumentList status
 npx redactor-tool gain
 ```
 

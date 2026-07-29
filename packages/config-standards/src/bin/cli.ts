@@ -2,7 +2,7 @@
 import {MnemotekCli} from '@studnicky/mnemotek'
 import process from 'node:process'
 
-import {createConfigStandardsApp} from '../core/configStandardsApp.js'
+import {ConfigStandardsApp} from '../core/configStandardsApp.js'
 
-const exitCode = await MnemotekCli.execute(createConfigStandardsApp())
+const exitCode = await MnemotekCli.execute(ConfigStandardsApp.createConfigStandardsApp())
 process.exitCode = exitCode

@@ -1,3 +1,4 @@
+import type {BooleanSchemaEntity} from '../entities/BooleanSchemaEntity.js'
 import type {CommandDescriptionEntity} from '../entities/CommandDescriptionEntity.js'
 import type {CommandNameEntity} from '../entities/CommandNameEntity.js'
 import type {CommandPayloadEntity} from '../entities/CommandPayloadEntity.js'
@@ -25,5 +26,23 @@ export namespace mnemotekContract {
   export interface CommandRunnerInterface {
     (payload: CommandPayloadEntity.Type): CommandResultEntity.Type | Promise<CommandResultEntity.Type | undefined> | undefined;
     readonly contractMarker?: never;
+  }
+
+  export interface ManifestCommandInterface {
+    readonly description: CommandDescriptionEntity.Type;
+    readonly hasResultSchema: BooleanSchemaEntity.Type;
+    readonly hasRunner: BooleanSchemaEntity.Type;
+    readonly inputSchema: SchemaObjectInterface | undefined;
+    readonly name: CommandNameEntity.Type;
+    readonly resultSchema: SchemaObjectInterface | undefined;
+    readonly subcommands: readonly unknown[];
+  }
+
+  export interface SkillManifestCommandInterface {
+    readonly description: CommandDescriptionEntity.Type;
+    readonly name: CommandNameEntity.Type;
+    readonly resultSchema: SchemaObjectInterface | undefined;
+    readonly schema: SchemaObjectInterface | undefined;
+    readonly subcommands: readonly unknown[];
   }
 }

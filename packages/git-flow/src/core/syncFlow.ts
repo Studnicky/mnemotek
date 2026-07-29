@@ -1,48 +1,90 @@
 import {execFileSync} from 'node:child_process'
 
-import {detectBranchStructure} from './gitPrimitives.js'
+import type {SyncFlowResultEntity} from '../entities/index.js'
 
-export interface SyncFlowResult {
-  readonly [key: string]: unknown
-  readonly fastForwarded: readonly string[]
-  readonly pruned: boolean
-}
+import {GitPrimitives} from './gitPrimitives.js'
 
-function git (args: readonly string[]): void {
+export class SyncFlow {
 
-  execFileSync('git', [...args], {encoding: 'utf8'})
+  public static syncFlow (): SyncFlowResultEntity.Type {
 
-}
+    SyncFlow.git(SyncFlow.toArgumentList(
+      'fetch',
+      '--all',
+      '--prune'
+    ))
 
-export function syncFlow (): SyncFlowResult {
+    const structure = GitPrimitives.detectBranchStructure()
+    const branches = structure.development === undefined
+      ? SyncFlow.toBranchList(structure.production)
+      : SyncFlow.toBranchList(
+        structure.production,
+        structure.development
+      )
 
-  git(['fetch', '--all', '--prune'])
+    const fastForwarded = branches.filter((branch) => {
 
-  const structure = detectBranchStructure()
-  const branches = structure.development === undefined
-    ? [structure.production]
-    : [structure.production, structure.development]
+      const result = SyncFlow.fastForwardBranch(branch)
+      return result
 
-  const fastForwarded: string[] = []
+    })
 
-  for (const branch of branches) {
+    SyncFlow.git(SyncFlow.toArgumentList(
+      'checkout',
+      structure.current
+    ))
+
+    return {fastForwarded,
+      pruned: true}
+
+  }
+
+  private static fastForwardBranch (branch: string): boolean {
 
     try {
 
-      git(['checkout', branch])
-      git(['merge', '--ff-only', `origin/${branch}`])
-      fastForwarded.push(branch)
+      SyncFlow.git(SyncFlow.toArgumentList(
+        'checkout',
+        branch
+      ))
+      SyncFlow.git(SyncFlow.toArgumentList(
+        'merge',
+        '--ff-only',
+        `origin/${branch}`
+      ))
+      return true
 
     } catch {
 
       // branch has diverged or has no upstream — leave it alone
+      return false
 
     }
 
   }
 
-  git(['checkout', structure.current])
+  private static git (argumentList: readonly string[]): void {
 
-  return {fastForwarded, pruned: true}
+    execFileSync(
+      'git',
+      [...argumentList],
+      {encoding: 'utf8'}
+    )
+
+  }
+
+  private static toArgumentList (...parts: string[]): string[] {
+
+    const result = parts
+    return result
+
+  }
+
+  private static toBranchList (...branches: string[]): string[] {
+
+    const result = branches
+    return result
+
+  }
 
 }
