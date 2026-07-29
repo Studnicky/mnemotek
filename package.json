@@ -1,6 +1,6 @@
 {
   "name": "@studnicky/mnemotek",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "A typed command manifest foundation for agentic CLIs, skills, and MCP tools.",
   "author": "Andrew Studnicky <a.j.studnicky@gmail.com>",
   "homepage": "https://github.com/Studnicky/mnemotek#readme",
