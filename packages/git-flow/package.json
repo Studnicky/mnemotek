@@ -1,6 +1,6 @@
 {
   "name": "@studnicky/git-flow",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Mnemotek-based git-flow driver: feature/release/hotfix branch orchestration, Conventional Commits validation, and branch-derived commit type suggestion. No server, no daemon.",
   "author": "Andrew Studnicky <a.j.studnicky@gmail.com>",
   "homepage": "https://github.com/Studnicky/mnemotek/tree/main/packages/git-flow#readme",
@@ -10,7 +10,12 @@
     "url": "git+https://github.com/Studnicky/mnemotek.git",
     "directory": "packages/git-flow"
   },
-  "keywords": ["git", "git-flow", "cli", "mcp"],
+  "keywords": [
+    "git",
+    "git-flow",
+    "cli",
+    "mcp"
+  ],
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.js",
@@ -24,7 +29,11 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=24.0.0",
     "pnpm": ">=10.0.0"
