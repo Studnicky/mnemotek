@@ -4,6 +4,8 @@ import {BranchTypeEntity} from '../entities/index.js'
 import {ConventionalCommits} from './conventionalCommits.js'
 import {GithubPrimitives} from './githubPrimitives.js'
 import {GitPrimitives} from './gitPrimitives.js'
+import {MergeMethodResolver} from './mergeMethodResolver.js'
+import {PrTemplateInstaller} from './prTemplateInstaller.js'
 
 export class FeatureFlow {
 
@@ -242,6 +244,9 @@ export class FeatureFlow {
      * Conventional Commits type). feature -> feat is the other divergence.
      */
     const conventionalType = ConventionalCommits.branchPrefixToConventionalType(prefix ?? 'chore')
+
+    PrTemplateInstaller.ensureTemplate(process.cwd())
+
     const prUrl = GithubPrimitives.createPr({
       base: targetBranch,
       body: `Branch \`${branch}\` (${String(commits.length)} commit(s)).`,
@@ -250,7 +255,16 @@ export class FeatureFlow {
     })
 
     GithubPrimitives.waitForChecks({repository})
-    GithubPrimitives.mergePr({method: 'squash',
+
+    const capabilities = GithubPrimitives.repositoryMergeCapabilities(repository)
+    const method = MergeMethodResolver.resolve(
+      capabilities,
+      'squash',
+      'merge',
+      'rebase'
+    )
+
+    GithubPrimitives.mergePr({method,
       repository})
 
     return {branch,

@@ -1,4 +1,7 @@
-## Summary
+const FENCE = '```'
+
+export const PR_TEMPLATE = {
+  DEFAULT_CONTENT: `## Summary
 
 <!-- What's changing, in 1-3 sentences. Present tense, verb-first. -->
 
@@ -80,10 +83,10 @@ this whole section if a diagram wouldn't add anything past the diff itself.
 <details>
 <summary>Diagram</summary>
 
-```mermaid
+${FENCE}mermaid
 flowchart LR
     A[Before] --> B[After]
-```
+${FENCE}
 
 </details>
 
@@ -106,7 +109,7 @@ This is a gate, not a formality — don't check anything from habit.
 - Conventions followed
 - Self-reviewed (adversarially — see above)
 - Docs updated (if needed)
-- Tests pass — `<command>` → `<result>`
+- Tests pass — \`<command>\` → \`<result>\`
 
 ## Related Issues
 
@@ -119,3 +122,14 @@ quippy one liner, in the voice of a scrappy, unimpressed street-level hacker
 who's seen enough chrome and wetware not to be dazzled by either, commenting on
 as a passing note or review responding to the fix/change delivered in this PR.
 -->
+`,
+  KNOWN_LOCATIONS: [
+    '.github/PULL_REQUEST_TEMPLATE.md',
+    '.github/pull_request_template.md',
+    'docs/PULL_REQUEST_TEMPLATE.md',
+    'docs/pull_request_template.md',
+    'PULL_REQUEST_TEMPLATE.md',
+    'pull_request_template.md'
+  ],
+  RELATIVE_PATH: '.github/PULL_REQUEST_TEMPLATE.md'
+} as const

@@ -1,5 +1,6 @@
 import type {MergeMethodEntity} from '../entities/index.js'
 
+import {MERGE_METHOD_FLAGS} from './constants/GithubPrimitivesConstants.js'
 import {ExecCliTool} from './execCliTool.js'
 
 export class GithubPrimitives {
@@ -68,9 +69,7 @@ export class GithubPrimitives {
   public static mergePr (input: {method?: MergeMethodEntity.Type;
     repository?: string;}): void {
 
-    const methodFlag = input.method === 'merge'
-      ? '--merge'
-      : '--squash'
+    const methodFlag = MERGE_METHOD_FLAGS[input.method ?? 'squash']
     ExecCliTool.run(
       'gh',
       GithubPrimitives.toArgumentList(
@@ -81,6 +80,28 @@ export class GithubPrimitives {
         ...GithubPrimitives.repositoryFlags(input.repository)
       )
     )
+
+  }
+
+  public static repositoryMergeCapabilities (repository?: string): {allowMerge: boolean;
+    allowRebase: boolean;
+    allowSquash: boolean;} {
+
+    const result = ExecCliTool.run(
+      'gh',
+      GithubPrimitives.toArgumentList(
+        'api',
+        'repos/{owner}/{repo}',
+        ...GithubPrimitives.repositoryFlags(repository)
+      )
+    )
+    const parsed = JSON.parse(result) as {allow_merge_commit: boolean;
+      allow_rebase_merge: boolean;
+      allow_squash_merge: boolean;}
+    const capabilities = {allowMerge: parsed.allow_merge_commit,
+      allowRebase: parsed.allow_rebase_merge,
+      allowSquash: parsed.allow_squash_merge}
+    return capabilities
 
   }
 
