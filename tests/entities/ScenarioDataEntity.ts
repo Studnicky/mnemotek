@@ -8,8 +8,6 @@ export namespace ScenarioDataEntity {
     additionalProperties: true,
     properties: {
       appName: {type: 'string'},
-      arguments: {additionalProperties: true,
-        type: 'object'},
       argv: {items: {type: 'string'},
         type: 'array'},
       autoConfig: {additionalProperties: true,
@@ -36,11 +34,12 @@ export namespace ScenarioDataEntity {
       configFile: {additionalProperties: true,
         type: 'object'},
       description: {type: 'string'},
-      envContent: {type: 'string'},
-      envOverrides: {additionalProperties: true,
+      environmentContent: {type: 'string'},
+      environmentOverrides: {additionalProperties: true,
         type: 'object'},
       expectedCommandCount: {type: 'number'},
       expectedCount: {type: 'number'},
+      expectedInvalidResult: {type: 'boolean'},
       expectedIsError: {type: 'boolean'},
       expectedLength: {type: 'number'},
       expectedMessage: {type: 'string'},
@@ -60,6 +59,8 @@ export namespace ScenarioDataEntity {
       schemaKey: {type: 'string'},
       shape: {type: 'string'},
       shapeMode: {type: 'string'},
+      toolArguments: {additionalProperties: true,
+        type: 'object'},
       toolName: {type: 'string'}
     },
     type: 'object'

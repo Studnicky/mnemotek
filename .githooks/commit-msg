@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+
+CLI="packages/git-flow/dist/bin/cli.js"
+
+if [ ! -f "$CLI" ]; then
+  echo "commit-msg: $CLI not built — skipping (run 'pnpm --filter @studnicky/git-flow run build')"
+  exit 0
+fi
+
+node "$CLI" commit-check --file "$1"

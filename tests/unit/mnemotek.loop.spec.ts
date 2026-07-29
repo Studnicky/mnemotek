@@ -9,7 +9,10 @@ import process from 'node:process'
 import {describe, mock} from 'node:test'
 
 import type {SchemaObjectInterface} from '../../src/core/SchemaObjectInterface.js'
+import type {CommandPayloadEntity} from '../../src/entities/CommandPayloadEntity.js'
+import type {CommandResultEntity} from '../../src/entities/CommandResultEntity.js'
 import type {ScenarioDataEntity} from '../entities/ScenarioDataEntity.js'
+import type {ScenarioCaseInterface} from '../interfaces/ScenarioCaseInterface.js'
 
 import {
   Mnemotek,
@@ -18,23 +21,145 @@ import {
   MnemotekMcp
 } from '../../src/index.js'
 import {RunScenarioGroups} from '../support/runScenarioGroups.js'
-import scenarioGroupsData from './mnemotek.scenarios.json' with {type: 'json'}
-
-interface ScenarioCaseInterface {
-  expected?: ScenarioDataInterface;
-  input?: ScenarioDataInterface;
-  shape?: string;
-}
-
-type ScenarioDataInterface = ScenarioDataEntity.Type
-
-type ScenarioMapInterface = Readonly<Record<string, ScenarioCaseInterface[]>>
-
-const scenarioGroups = scenarioGroupsData as ScenarioMapInterface
+import {scenarioGroups} from './fixtures/scenarioGroups.js'
 
 class MnemotekLoopTests {
 
-  public static cloneValue (input: unknown): ScenarioDataInterface | undefined {
+  /** Asserts a built manifest matches a scenario's expected command shape. */
+  public static assertManifestOutcome (manifest: ReturnType<Mnemotek['manifest']>, scenarioCase: ScenarioCaseInterface, expectedCommand: Partial<NonNullable<ScenarioDataEntity.Type['commands']>[number]>): void {
+
+    const {expected} = scenarioCase
+    assert.equal(
+      manifest.name,
+      scenarioCase.expected?.name
+    )
+    assert.equal(
+      manifest.description,
+      expected?.description
+    )
+    assert.equal(
+      manifest.commands.length,
+      expected?.commands?.length ?? 0
+    )
+
+    const command = manifest.commands[0]
+    assert.equal(
+      command?.name,
+      expectedCommand.name
+    )
+    assert.equal(
+      command?.description,
+      expectedCommand.description
+    )
+    assert.equal(
+      command?.hasRunner,
+      expectedCommand.hasRunner === true
+    )
+    assert.equal(
+      command?.hasResultSchema,
+      expectedCommand.hasResultSchema === true
+    )
+
+  }
+
+  /** Asserts an MCP tool listing or tool call matches a scenario's expected outcome. */
+  public static async assertMcpOutcome (mcp: MnemotekMcp, input: ScenarioDataEntity.Type): Promise<void> {
+
+    if (input.shapeMode === 'list') {
+
+      const tools = mcp.listTools()
+
+      assert.equal(
+        tools.tools.length,
+        input.expectedLength
+      )
+      assert.equal(
+        tools.tools[0]?.name,
+        input.expectedToolName
+      )
+      assert.equal(
+        typeof tools.tools[0]?.inputSchema,
+        'object'
+      )
+      return
+
+    }
+
+    const result = await mcp.callTool(
+      input.toolName ?? 'inspect',
+      input.toolArguments ?? {}
+    )
+    assert.equal(
+      result.isError,
+      input.expectedIsError === true
+    )
+    if (typeof input.expectedToolName === 'string') {
+
+      assert.equal(
+        input.toolName,
+        input.expectedToolName
+      )
+
+    }
+
+    if (typeof input.expectedToolText === 'string') {
+
+      assert.equal(
+        result.content?.[0]?.text,
+        input.expectedToolText
+      )
+
+    }
+
+    if (typeof input.expectedToolErrorText === 'string') {
+
+      assert.equal(
+        result.content?.[0]?.text,
+        input.expectedToolErrorText
+      )
+
+    }
+
+  }
+
+  /**
+   * Captures the outbound `message` and full config payload from a command runner's
+   * config argument into a shared mutable result, reused by every scenario runner that
+   * needs to observe what the application handed to the command.
+   */
+  public static captureRunnerOutput (capture: {config: Record<string, unknown>;
+    message: string;}, config: unknown): undefined {
+
+    if (config === null || typeof config !== 'object') {
+
+      return undefined
+
+    }
+
+    const messageValue = Reflect.get(
+      config,
+      'message'
+    )
+    const nextMessage = typeof messageValue === 'string'
+      ? messageValue
+      : ''
+    if (nextMessage.length > 0) {
+
+      capture.message = nextMessage
+
+    }
+    const nextConfig = MnemotekLoopTests.cloneValue(config)
+    if (nextConfig !== undefined && nextConfig !== null && typeof nextConfig === 'object') {
+
+      capture.config = nextConfig
+
+    }
+
+    return undefined
+
+  }
+
+  public static cloneValue (input: unknown): ScenarioDataEntity.Type | undefined {
 
     if (input === undefined) {
 
@@ -46,7 +171,7 @@ class MnemotekLoopTests {
 
   }
 
-  public static createTempProject (fixture: ScenarioDataInterface): string {
+  public static createTempProject (fixture: ScenarioDataEntity.Type): string {
 
     const root = mkdtempSync(path.join(
       tmpdir(),
@@ -86,14 +211,14 @@ class MnemotekLoopTests {
 
     }
 
-    if (fixture.envContent !== undefined) {
+    if (fixture.environmentContent !== undefined) {
 
       writeFileSync(
         path.join(
           fixtureRoot,
           '.env'
         ),
-        fixture.envContent,
+        fixture.environmentContent,
         'utf-8'
       )
 
@@ -152,12 +277,6 @@ class MnemotekLoopTests {
       app.command({
         description: 'Inspect',
         name: 'inspect',
-        runner: () => {
-
-          const result = undefined
-          return result
-
-        },
         schema: MnemotekLoopTests.schemaForKey('cli-default')
       })
 
@@ -186,55 +305,34 @@ class MnemotekLoopTests {
     const originalCwd = process.cwd()
     const input = MnemotekLoopTests.cloneValue(scenarioCase.input) ?? {}
     const projectRoot = MnemotekLoopTests.createTempProject(input)
-    let capturedMessage = ''
-    let capturedConfig: Record<string, unknown> = {}
+    const capture = {config: {} as Record<string, unknown>,
+      message: ''}
 
     const app = new Mnemotek({
       description: 'Mnemotek loop suite',
       name: 'mnemotek'
     })
     const schema = MnemotekLoopTests.schemaForKey(input.schemaKey ?? 'cli-default')
+    const runner = (config: unknown): undefined => {
+
+      MnemotekLoopTests.captureRunnerOutput(
+        capture,
+        config
+      )
+      return undefined
+
+    }
     app.command({
       description: 'Inspect',
       name: 'inspect',
-      runner: (config) => {
-
-        if (
-          config !== null &&
-          typeof config === 'object'
-        ) {
-
-          const messageValue = Reflect.get(
-            config,
-            'message'
-          )
-          const nextMessage = typeof messageValue === 'string'
-            ? messageValue
-            : ''
-          if (nextMessage.length > 0) {
-
-            capturedMessage = nextMessage
-
-          }
-          const nextConfig = MnemotekLoopTests.cloneValue(config)
-          if (nextConfig !== undefined && nextConfig !== null && typeof nextConfig === 'object') {
-
-            capturedConfig = nextConfig
-
-          }
-
-        }
-
-        return undefined
-
-      },
+      runner,
       schema: schema
     })
 
     try {
 
       process.chdir(projectRoot)
-      const restoreEnvironment = MnemotekLoopTests.withTemporaryEnvironment(input.envOverrides ?? {})
+      const restoreEnvironment = MnemotekLoopTests.withTemporaryEnvironment(input.environmentOverrides ?? {})
 
       try {
 
@@ -243,8 +341,8 @@ class MnemotekLoopTests {
           input.argv
         )
 
-        return {capturedConfig,
-          capturedMessage,
+        return {capturedConfig: capture.config,
+          capturedMessage: capture.message,
           status}
 
       } finally {
@@ -275,7 +373,7 @@ class MnemotekLoopTests {
     try {
 
       process.chdir(projectRoot)
-      const restoreEnvironment = MnemotekLoopTests.withTemporaryEnvironment(input.envOverrides ?? {})
+      const restoreEnvironment = MnemotekLoopTests.withTemporaryEnvironment(input.environmentOverrides ?? {})
 
       try {
 
@@ -316,16 +414,16 @@ class MnemotekLoopTests {
     const originalCwd = process.cwd()
     const input = MnemotekLoopTests.cloneValue(scenarioCase.input) ?? {}
     const projectRoot = MnemotekLoopTests.createTempProject(input)
-    let capturedMessage = ''
-    let capturedConfig: Record<string, unknown> = {}
+    const capture = {config: {} as Record<string, unknown>,
+      message: ''}
 
     const promptSpy = mock.method(
       Enquirer.prototype,
       'prompt',
       async function () {
 
-        const result = promptReply
-        return result
+        const reply = await Promise.resolve(promptReply)
+        return reply
 
       }
     )
@@ -335,47 +433,26 @@ class MnemotekLoopTests {
       name: 'mnemotek'
     })
     const schema = MnemotekLoopTests.schemaForKey(input.schemaKey ?? 'interactive-required')
+    const runner = (config: unknown): undefined => {
+
+      MnemotekLoopTests.captureRunnerOutput(
+        capture,
+        config
+      )
+      return undefined
+
+    }
     app.command({
       description: 'Inspect',
       name: 'inspect',
-      runner: (config) => {
-
-        if (
-          config !== null &&
-          typeof config === 'object'
-        ) {
-
-          const messageValue = Reflect.get(
-            config,
-            'message'
-          )
-          const nextMessage = typeof messageValue === 'string'
-            ? messageValue
-            : ''
-          if (nextMessage.length > 0) {
-
-            capturedMessage = nextMessage
-
-          }
-          const nextConfig = MnemotekLoopTests.cloneValue(config)
-          if (nextConfig !== undefined && nextConfig !== null && typeof nextConfig === 'object') {
-
-            capturedConfig = nextConfig
-
-          }
-
-        }
-
-        return undefined
-
-      },
+      runner,
       schema: schema
     })
 
     try {
 
       process.chdir(projectRoot)
-      const restoreEnvironment = MnemotekLoopTests.withTemporaryEnvironment(input.envOverrides ?? {})
+      const restoreEnvironment = MnemotekLoopTests.withTemporaryEnvironment(input.environmentOverrides ?? {})
 
       try {
 
@@ -385,8 +462,8 @@ class MnemotekLoopTests {
         )
 
         return {
-          capturedConfig,
-          capturedMessage,
+          capturedConfig: capture.config,
+          capturedMessage: capture.message,
           promptCalls: promptSpy.mock.callCount(),
           status
         }
@@ -436,59 +513,34 @@ class MnemotekLoopTests {
         type: 'object'
       }
       : undefined
+    const manifestRunner = (): CommandResultEntity.Type => {
+
+      return {message: 'ok'}
+
+    }
 
     app.command({
       description: expectedCommandDescription,
       name: expectedCommandName,
       resultSchema,
       runner: shouldHaveRunner
-        ? () => {
-
-          return {message: 'ok'}
-
-        }
+        ? manifestRunner
         : undefined,
       schema: schema
     })
 
-    const manifest = app.manifest()
-    assert.equal(
-      manifest.name,
-      scenarioCase.expected?.name
-    )
-    assert.equal(
-      manifest.description,
-      expected?.description
-    )
-    assert.equal(
-      manifest.commands.length,
-      expected?.commands?.length ?? 0
-    )
-
-    const command = manifest.commands[0]
-    assert.equal(
-      command?.name,
-      expectedCommand.name
-    )
-    assert.equal(
-      command?.description,
-      expectedCommand.description
-    )
-    assert.equal(
-      command?.hasRunner,
-      expectedCommand.hasRunner === true
-    )
-    assert.equal(
-      command?.hasResultSchema,
-      expectedCommand.hasResultSchema === true
+    MnemotekLoopTests.assertManifestOutcome(
+      app.manifest(),
+      scenarioCase,
+      expectedCommand
     )
 
   }
 
   public static async runMcpScenario (scenarioCase: ScenarioCaseInterface): Promise<void> {
 
-    const input = MnemotekLoopTests.cloneValue(scenarioCase.input) as Record<string, any>
-    const schema = MnemotekLoopTests.schemaForKey(input.schemaKey)
+    const input = MnemotekLoopTests.cloneValue(scenarioCase.input) ?? {}
+    const schema = MnemotekLoopTests.schemaForKey(input.schemaKey ?? 'manifest-basic')
     const app = new Mnemotek({
       description: 'Mnemotek MCP suite',
       name: input.appName ?? 'mnemotek'
@@ -502,86 +554,37 @@ class MnemotekLoopTests {
         required: ['message'],
         type: 'object'
       }
+    const mcpRunner = (config: CommandPayloadEntity.Type): CommandResultEntity.Type => {
+
+      if (input.expectedInvalidResult === true) {
+
+        return 42
+
+      }
+
+      return {message: config.message}
+
+    }
 
     app.command({
       description: 'Inspect',
       name: 'inspect',
       resultSchema: resultSchema,
-      runner: (config) => {
-
-        if (input.expectedInvalidResult === true) {
-
-          return 42
-
-        }
-
-        return {message: config.message}
-
-      },
+      runner: mcpRunner,
       schema: schema
     })
 
     const mcp = MnemotekMcp.create(app)
-    if (input.shapeMode === 'list') {
-
-      const tools = mcp.listTools()
-
-      assert.equal(
-        tools.tools.length,
-        input.expectedLength
-      )
-      assert.equal(
-        tools.tools[0]?.name,
-        input.expectedToolName
-      )
-      assert.equal(
-        typeof tools.tools[0]?.inputSchema,
-        'object'
-      )
-      return
-
-    }
-
-    const result = await mcp.callTool(
-      input.toolName ?? 'inspect',
-      input.arguments ?? {}
+    await MnemotekLoopTests.assertMcpOutcome(
+      mcp,
+      input
     )
-    assert.equal(
-      result.isError,
-      input.expectedIsError === true
-    )
-    if (typeof input.expectedToolName === 'string') {
-
-      assert.equal(
-        input.toolName,
-        input.expectedToolName
-      )
-
-    }
-
-    if (typeof input.expectedToolText === 'string') {
-
-      assert.equal(
-        result.content?.[0]?.text,
-        input.expectedToolText
-      )
-
-    }
-
-    if (typeof input.expectedToolErrorText === 'string') {
-
-      assert.equal(
-        result.content?.[0]?.text,
-        input.expectedToolErrorText
-      )
-
-    }
 
   }
 
   public static runSkillManifestScenario (scenarioCase: ScenarioCaseInterface): void {
 
-    const input = MnemotekLoopTests.cloneValue(scenarioCase.input) as Record<string, any>
+    const input = MnemotekLoopTests.cloneValue(scenarioCase.input) ?? {}
     const app = new Mnemotek({
       description: input.description ?? 'Mnemotek skill manifest suite',
       name: input.appName ?? 'mnemotek'
@@ -589,12 +592,6 @@ class MnemotekLoopTests {
     app.command({
       description: 'Inspect',
       name: 'inspect',
-      runner: () => {
-
-        const result = undefined
-        return result
-
-      },
       schema: MnemotekLoopTests.schemaForKey('manifest-basic')
     })
 
@@ -730,7 +727,7 @@ class MnemotekLoopTests {
 
     }
 
-    throw new TypeError(`Unknown schema key: ${String(schemaKey)}`)
+    throw new TypeError(`Unknown schema key: ${schemaKey}`)
 
   }
 
@@ -743,7 +740,9 @@ class MnemotekLoopTests {
       value
     ] of Object.entries(overrides)) {
 
-    process.env[key] = typeof value === 'string' ? value : undefined
+      process.env[key] = typeof value === 'string'
+        ? value
+        : undefined
 
     }
 
@@ -753,7 +752,10 @@ class MnemotekLoopTests {
 
         if (originalEnvironment[key] === undefined) {
 
-          delete process.env[key]
+          Reflect.deleteProperty(
+            process.env,
+            key
+          )
 
         }
 
@@ -831,9 +833,21 @@ const runnerMap: Record<string, (scenarioCase: ScenarioCaseInterface) => Promise
     )
 
   },
-  manifest: MnemotekLoopTests.runManifestScenario,
-  mcp: MnemotekLoopTests.runMcpScenario,
-  'skill-manifest': MnemotekLoopTests.runSkillManifestScenario
+  manifest: (scenarioCase: ScenarioCaseInterface): void => {
+
+    MnemotekLoopTests.runManifestScenario(scenarioCase)
+
+  },
+  mcp: async (scenarioCase: ScenarioCaseInterface): Promise<void> => {
+
+    await MnemotekLoopTests.runMcpScenario(scenarioCase)
+
+  },
+  'skill-manifest': (scenarioCase: ScenarioCaseInterface): void => {
+
+    MnemotekLoopTests.runSkillManifestScenario(scenarioCase)
+
+  }
 }
 
 void describe(

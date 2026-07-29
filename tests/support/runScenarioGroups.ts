@@ -1,8 +1,11 @@
 import {it} from 'node:test'
 
+import type {ScenarioNameEntity} from '../entities/ScenarioNameEntity.js'
+import type {ScenarioShapeEntity} from '../entities/ScenarioShapeEntity.js'
+
 interface ScenarioCaseInterface {
-  readonly name?: string;
-  readonly shape?: string;
+  readonly name?: ScenarioNameEntity.Type;
+  readonly shape?: ScenarioShapeEntity.Type;
 }
 
 interface ScenarioGroupOptionsInterface {
@@ -11,20 +14,24 @@ interface ScenarioGroupOptionsInterface {
   readonly runnerMap?: Record<string, ScenarioRunnerInterface>;
 }
 
-type ScenarioGroupsInterface = Readonly<Record<string, readonly ScenarioCaseInterface[]>>
+interface ScenarioGroupsInterface {
+  readonly [group: string]: readonly ScenarioCaseInterface[];
+}
 
-type ScenarioRunnerInterface = (scenarioCase: ScenarioCaseInterface) => Promise<void> | void
+interface ScenarioRunnerInterface {
+  (scenarioCase: ScenarioCaseInterface): Promise<void> | void;
+}
 
 export class RunScenarioGroups {
 
   public static run (options: ScenarioGroupOptionsInterface): void {
 
-    const run = options.run ?? (async (scenarioCase) => {
+    const run = options.run ?? (async (scenarioCase): Promise<void> => {
 
       const {shape} = scenarioCase
       const runner = shape === undefined
         ? undefined
-        : options.runnerMap?.[scenarioCase.shape ?? '']
+        : options.runnerMap?.[shape]
 
       if (runner === undefined) {
 
@@ -44,7 +51,7 @@ export class RunScenarioGroups {
       for (const scenarioCase of scenarios) {
 
         void it(
-          `${group}: ${scenarioCase.name}`,
+          `${group}: ${scenarioCase.name ?? '<unnamed>'}`,
           async () => {
 
             await Promise.resolve(run(scenarioCase))

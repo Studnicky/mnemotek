@@ -24,11 +24,11 @@ esac
 # ============================================================================
 
 case "$current_branch" in
-  feature/*|feat/*|fix/*|chore/*|ci/*|docs/*|release/*|hotfix/*|changeset-release/*) ;;
+  feature/*|bugfix/*|chore/*|docs/*|test/*|refactor/*|perf/*|ci/*|build/*|release/*|hotfix/*|changeset-release/*) ;;
   *)
     echo ""
     echo "WARNING: branch '$current_branch' doesn't match the naming convention"
-    echo "(feature/*, fix/*, chore/*, ci/*, docs/*, release/*, hotfix/*)."
+    echo "(feature/*, bugfix/*, chore/*, docs/*, test/*, refactor/*, perf/*, ci/*, build/*, release/*, hotfix/*)."
     echo "Pushing anyway — rename before opening a PR if this was unintentional."
     ;;
 esac
@@ -56,8 +56,9 @@ esac
 # ============================================================================
 
 echo ""
-echo "Running full CI checks before push..."
+echo "Running full CI checks before push (root, then all workspace packages)..."
 pnpm run ci
+pnpm -r run ci
 
 echo "Pre-push checks passed"
 exit 0

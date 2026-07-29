@@ -1,0 +1,63 @@
+{
+  "name": "@studnicky/config-standards",
+  "version": "0.1.0",
+  "description": "Mnemotek-based CLI/MCP/skill: check and fix common project config files (.gitignore, .npmrc, package.json fields) against a small built-in standards set. No server, no external services.",
+  "author": "Andrew Studnicky <a.j.studnicky@gmail.com>",
+  "homepage": "https://github.com/Studnicky/mnemotek/tree/main/packages/config-standards#readme",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Studnicky/mnemotek.git",
+    "directory": "packages/config-standards"
+  },
+  "keywords": ["cli", "mcp", "config", "standards"],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "config-standards-tool": "./dist/bin/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "public"
+  },
+  "private": false,
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "ci": "pnpm run typecheck && pnpm run lint && pnpm run typecheck:test && pnpm run test",
+    "lint": "eslint . --max-warnings 0",
+    "prebuild": "pnpm --filter @studnicky/mnemotek run build",
+    "pretest": "pnpm --filter @studnicky/mnemotek run build",
+    "pretypecheck": "pnpm --filter @studnicky/mnemotek run build",
+    "pretypecheck:test": "pnpm --filter @studnicky/mnemotek run build",
+    "test": "pnpm run build && node --import tsx --test tests/**/*.spec.ts",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "typecheck:test": "tsc --project tsconfig.tests.json --noEmit"
+  },
+  "dependencies": {
+    "@studnicky/json": "^9.2.0",
+    "@studnicky/mnemotek": "workspace:*",
+    "commander": "^14.0.0",
+    "enquirer": "^2.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "ajv": "^8.20.0",
+    "eslint": "^10.8.0",
+    "json-schema-to-ts": "^3.1.1",
+    "tsx": "^4.23.1",
+    "typescript": "^6.0.3"
+  }
+}

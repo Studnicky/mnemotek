@@ -34,7 +34,8 @@
     "./entities": {
       "types": "./dist/entities/index.d.ts",
       "import": "./dist/entities/index.js"
-    }
+    },
+    "./eslint-config": "./eslint.config.shared.mjs"
   },
   "files": [
     "dist",
@@ -61,7 +62,7 @@
     "publish:all": "pnpm publish --access public --no-git-checks",
     "generate:og": "node scripts/generate-og.mjs",
     "clean": "pnpm exec tsc -b --clean",
-    "prepare": "git config core.hooksPath .githooks || true",
+    "prepare": "git config core.hooksPath .githooks || true; pnpm --filter @studnicky/git-flow run build || true",
     "lint": "pnpm exec eslint . --max-warnings 0",
     "prepack": "pnpm run generate:og && pnpm run clean && pnpm run build",
     "prepublishOnly": "pnpm run generate:og && pnpm run ci",
