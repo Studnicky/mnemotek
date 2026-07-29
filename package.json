@@ -59,7 +59,7 @@
     "changeset": "pnpm exec changeset",
     "changeset:status": "pnpm exec changeset status",
     "changeset:version": "pnpm exec changeset version",
-    "publish:all": "pnpm publish --access public --no-git-checks",
+    "publish:all": "pnpm exec changeset publish",
     "generate:og": "node scripts/generate-og.mjs",
     "clean": "pnpm exec tsc -b --clean",
     "prepare": "git config core.hooksPath .githooks || true; pnpm --filter @studnicky/git-flow run build || true",
