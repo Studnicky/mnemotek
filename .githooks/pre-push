@@ -52,7 +52,7 @@ esac
 # Skip for branches that don't PR into develop, and for docs/ci-only branches.
 
 case "$current_branch" in
-  release/*|hotfix/*|changeset-release/*|docs/*|ci/*) ;;
+  release/*|hotfix/*|changeset-release/*|chore/backmerge-*|docs/*|ci/*) ;;
   *)
     COUNT=$(find .changeset -maxdepth 1 -name '*.md' ! -name 'README.md' 2>/dev/null | wc -l | tr -d ' ')
     if [ "$COUNT" -eq 0 ]; then
