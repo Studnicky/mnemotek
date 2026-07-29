@@ -1,8 +1,13 @@
 import type {MergeMethodEntity} from '../entities/index.js'
 
+import {MERGE_METHOD_FLAGS} from './constants/GithubPrimitivesConstants.js'
 import {ExecCliTool} from './execCliTool.js'
 
 export class GithubPrimitives {
+
+  private static readonly CI_REGISTRATION_POLL_INTERVAL_MS = 3_000
+
+  private static readonly CI_REGISTRATION_TIMEOUT_MS = 120_000
 
   private static readonly CI_WATCH_TIMEOUT_MS = 1_800_000
 
@@ -68,9 +73,7 @@ export class GithubPrimitives {
   public static mergePr (input: {method?: MergeMethodEntity.Type;
     repository?: string;}): void {
 
-    const methodFlag = input.method === 'merge'
-      ? '--merge'
-      : '--squash'
+    const methodFlag = MERGE_METHOD_FLAGS[input.method ?? 'squash']
     ExecCliTool.run(
       'gh',
       GithubPrimitives.toArgumentList(
@@ -84,7 +87,31 @@ export class GithubPrimitives {
 
   }
 
+  public static repositoryMergeCapabilities (repository?: string): {allowMerge: boolean;
+    allowRebase: boolean;
+    allowSquash: boolean;} {
+
+    const result = ExecCliTool.run(
+      'gh',
+      GithubPrimitives.toArgumentList(
+        'api',
+        'repos/{owner}/{repo}',
+        ...GithubPrimitives.repositoryFlags(repository)
+      )
+    )
+    const parsed = JSON.parse(result) as {allow_merge_commit: boolean;
+      allow_rebase_merge: boolean;
+      allow_squash_merge: boolean;}
+    const capabilities = {allowMerge: parsed.allow_merge_commit,
+      allowRebase: parsed.allow_rebase_merge,
+      allowSquash: parsed.allow_squash_merge}
+    return capabilities
+
+  }
+
   public static waitForChecks (input: {repository?: string}): void {
+
+    GithubPrimitives.waitForChecksToRegister(input.repository)
 
     ExecCliTool.run(
       'gh',
@@ -115,6 +142,46 @@ export class GithubPrimitives {
 
     const result = parts
     return result
+
+  }
+
+  private static waitForChecksToRegister (repository: string | undefined): void {
+
+    const deadline = Date.now() + GithubPrimitives.CI_REGISTRATION_TIMEOUT_MS
+
+    while (Date.now() < deadline) {
+
+      const result = ExecCliTool.run(
+        'gh',
+        GithubPrimitives.toArgumentList(
+          'pr',
+          'checks',
+          '--json',
+          'name',
+          ...GithubPrimitives.repositoryFlags(repository)
+        ),
+        {allowFail: true}
+      )
+      const checks: unknown[] = result.length > 0
+        ? JSON.parse(result) as unknown[]
+        : []
+
+      if (checks.length > 0) {
+
+        return
+
+      }
+
+      Atomics.wait(
+        new Int32Array(new SharedArrayBuffer(4)),
+        0,
+        0,
+        GithubPrimitives.CI_REGISTRATION_POLL_INTERVAL_MS
+      )
+
+    }
+
+    throw new Error(`No CI checks registered on the pull request within ${String(GithubPrimitives.CI_REGISTRATION_TIMEOUT_MS)}ms.`)
 
   }
 

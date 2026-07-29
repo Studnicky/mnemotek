@@ -10,6 +10,8 @@ import {FeatureFlow} from '../src/core/featureFlow.js'
 import {GitFlowApp} from '../src/core/gitFlowApp.js'
 import {GitPrimitives} from '../src/core/gitPrimitives.js'
 import {HotfixFlow} from '../src/core/hotfixFlow.js'
+import {MergeMethodResolver} from '../src/core/mergeMethodResolver.js'
+import {PrTemplateInstaller} from '../src/core/prTemplateInstaller.js'
 import {ReleaseFlow} from '../src/core/releaseFlow.js'
 import {Versioning} from '../src/core/versioning.js'
 import {GIT_FLOW_EXPECTED_PATTERNS} from './fixtures/GitFlowExpectedPatterns.js'
@@ -2222,6 +2224,207 @@ void describe(
             'sync'
           ]
         )
+
+      }
+    )
+
+    void test(
+      'MergeMethodResolver.resolve: picks the first acceptable method that is available',
+      () => {
+
+        const resolved = MergeMethodResolver.resolve(
+          {allowMerge: true,
+            allowRebase: true,
+            allowSquash: true},
+          'merge',
+          'rebase'
+        )
+
+        assert.equal(
+          resolved,
+          'merge'
+        )
+
+      }
+    )
+
+    void test(
+      'MergeMethodResolver.resolve: falls through to the next preference when the first is unavailable',
+      () => {
+
+        const resolved = MergeMethodResolver.resolve(
+          {allowMerge: false,
+            allowRebase: true,
+            allowSquash: true},
+          'merge',
+          'rebase'
+        )
+
+        assert.equal(
+          resolved,
+          'rebase'
+        )
+
+      }
+    )
+
+    void test(
+      'MergeMethodResolver.resolve: throws when none of the acceptable methods are available',
+      () => {
+
+        assert.throws(
+          () => {
+
+            MergeMethodResolver.resolve(
+              {allowMerge: false,
+                allowRebase: false,
+                allowSquash: true},
+              'merge',
+              'rebase'
+            )
+
+          },
+          GIT_FLOW_EXPECTED_PATTERNS.MERGE_METHOD_UNAVAILABLE
+        )
+
+      }
+    )
+
+    void test(
+      'MergeMethodResolver.resolve: prefers squash over merge/rebase when all three are available',
+      () => {
+
+        const resolved = MergeMethodResolver.resolve(
+          {allowMerge: true,
+            allowRebase: true,
+            allowSquash: true},
+          'squash',
+          'merge',
+          'rebase'
+        )
+
+        assert.equal(
+          resolved,
+          'squash'
+        )
+
+      }
+    )
+
+    void test(
+      'MergeMethodResolver.resolve: falls back from squash to merge when squash and rebase are unavailable',
+      () => {
+
+        const resolved = MergeMethodResolver.resolve(
+          {allowMerge: true,
+            allowRebase: false,
+            allowSquash: false},
+          'squash',
+          'merge',
+          'rebase'
+        )
+
+        assert.equal(
+          resolved,
+          'merge'
+        )
+
+      }
+    )
+
+    void test(
+      'PrTemplateInstaller.ensureTemplate: writes the default template when none exists',
+      () => {
+
+        const dir = mkdtempSync(join(
+          tmpdir(),
+          'git-flow-test-'
+        ))
+
+        try {
+
+          PrTemplateInstaller.ensureTemplate(dir)
+
+          const templatePath = join(
+            dir,
+            '.github',
+            'PULL_REQUEST_TEMPLATE.md'
+          )
+          assert.equal(
+            existsSync(templatePath),
+            true
+          )
+
+          const content = readFileSync(
+            templatePath,
+            'utf8'
+          )
+          assert.match(
+            content,
+            GIT_FLOW_EXPECTED_PATTERNS.PR_TEMPLATE_SUMMARY_HEADING
+          )
+
+        } finally {
+
+          rmSync(
+            dir,
+            {force: true,
+              recursive: true}
+          )
+
+        }
+
+      }
+    )
+
+    void test(
+      'PrTemplateInstaller.ensureTemplate: never overrides an existing template',
+      () => {
+
+        const dir = mkdtempSync(join(
+          tmpdir(),
+          'git-flow-test-'
+        ))
+
+        try {
+
+          const existingTemplatePath = join(
+            dir,
+            'PULL_REQUEST_TEMPLATE.md'
+          )
+          writeFileSync(
+            existingTemplatePath,
+            'existing template, do not touch'
+          )
+
+          PrTemplateInstaller.ensureTemplate(dir)
+
+          const content = readFileSync(
+            existingTemplatePath,
+            'utf8'
+          )
+          assert.equal(
+            content,
+            'existing template, do not touch'
+          )
+          assert.equal(
+            existsSync(join(
+              dir,
+              '.github',
+              'PULL_REQUEST_TEMPLATE.md'
+            )),
+            false
+          )
+
+        } finally {
+
+          rmSync(
+            dir,
+            {force: true,
+              recursive: true}
+          )
+
+        }
 
       }
     )
