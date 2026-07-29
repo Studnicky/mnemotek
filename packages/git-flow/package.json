@@ -1,6 +1,6 @@
 {
   "name": "@studnicky/git-flow",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Mnemotek-based git-flow driver: feature/release/hotfix branch orchestration, Conventional Commits validation, and branch-derived commit type suggestion. No server, no daemon.",
   "author": "Andrew Studnicky <a.j.studnicky@gmail.com>",
   "homepage": "https://github.com/Studnicky/mnemotek/tree/main/packages/git-flow#readme",
