@@ -3,21 +3,34 @@ set -e
 
 current_branch=$(git rev-parse --abbrev-ref HEAD)
 push_remote="${1:-origin}"
+pushed_refs=$(cat)
 
 # ============================================================================
 # Protected branch guard
 # ============================================================================
 # main/develop are also protected server-side (PR required, no force-push).
-# This local guard fails fast before the round-trip to GitHub.
+# This local guard fails fast before the round-trip to GitHub. Only blocks
+# pushes that actually update refs/heads/main or refs/heads/develop — a tag
+# push (e.g. a release tag, or changesets/action's own tag push) targets
+# refs/tags/*, a different ref namespace, and is allowed even when main or
+# develop happens to be the currently checked-out branch.
 
-case "$current_branch" in
-  main|develop)
-    echo ""
-    echo "ERROR: direct push to '$current_branch' is not allowed."
-    echo "Open a pull request instead: feature branches -> develop, release/hotfix -> main."
-    exit 1
-    ;;
-esac
+blocked_ref=$(echo "$pushed_refs" | awk '{print $3}' | grep -E '^refs/heads/(main|develop)$' | head -1)
+
+if [ -n "$blocked_ref" ]; then
+  blocked_branch=$(echo "$blocked_ref" | sed 's#refs/heads/##')
+  echo ""
+  echo "ERROR: direct push to '$blocked_branch' is not allowed."
+  echo "Open a pull request instead: feature branches -> develop, release/hotfix -> main."
+  exit 1
+fi
+
+non_tag_refs=$(echo "$pushed_refs" | awk '{print $3}' | grep -v '^refs/tags/' || true)
+
+if [ -n "$pushed_refs" ] && [ -z "$non_tag_refs" ]; then
+  echo "Tag-only push detected — skipping branch checks."
+  exit 0
+fi
 
 # ============================================================================
 # Branch naming convention
@@ -39,7 +52,7 @@ esac
 # Skip for branches that don't PR into develop, and for docs/ci-only branches.
 
 case "$current_branch" in
-  release/*|hotfix/*|changeset-release/*|docs/*|ci/*) ;;
+  release/*|hotfix/*|changeset-release/*|chore/backmerge-*|docs/*|ci/*) ;;
   *)
     COUNT=$(find .changeset -maxdepth 1 -name '*.md' ! -name 'README.md' 2>/dev/null | wc -l | tr -d ' ')
     if [ "$COUNT" -eq 0 ]; then

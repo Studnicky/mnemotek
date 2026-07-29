@@ -1,6 +1,6 @@
 {
   "name": "@studnicky/config-standards",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Mnemotek-based CLI/MCP/skill: check and fix common project config files (.gitignore, .npmrc, package.json fields) against a small built-in standards set. No server, no external services.",
   "author": "Andrew Studnicky <a.j.studnicky@gmail.com>",
   "homepage": "https://github.com/Studnicky/mnemotek/tree/main/packages/config-standards#readme",
@@ -10,7 +10,12 @@
     "url": "git+https://github.com/Studnicky/mnemotek.git",
     "directory": "packages/config-standards"
   },
-  "keywords": ["cli", "mcp", "config", "standards"],
+  "keywords": [
+    "cli",
+    "mcp",
+    "config",
+    "standards"
+  ],
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.js",
@@ -24,7 +29,11 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=24.0.0",
     "pnpm": ">=10.0.0"

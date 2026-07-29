@@ -1,6 +1,6 @@
 {
   "name": "@studnicky/mnemotek",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "A typed command manifest foundation for agentic CLIs, skills, and MCP tools.",
   "author": "Andrew Studnicky <a.j.studnicky@gmail.com>",
   "homepage": "https://github.com/Studnicky/mnemotek#readme",
@@ -59,7 +59,7 @@
     "changeset": "pnpm exec changeset",
     "changeset:status": "pnpm exec changeset status",
     "changeset:version": "pnpm exec changeset version",
-    "publish:all": "pnpm publish --access public --no-git-checks",
+    "publish:all": "pnpm exec changeset publish",
     "generate:og": "node scripts/generate-og.mjs",
     "clean": "pnpm exec tsc -b --clean",
     "prepare": "git config core.hooksPath .githooks || true; pnpm --filter @studnicky/git-flow run build || true",
