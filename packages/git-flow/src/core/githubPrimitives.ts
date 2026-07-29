@@ -5,6 +5,10 @@ import {ExecCliTool} from './execCliTool.js'
 
 export class GithubPrimitives {
 
+  private static readonly CI_REGISTRATION_POLL_INTERVAL_MS = 3_000
+
+  private static readonly CI_REGISTRATION_TIMEOUT_MS = 120_000
+
   private static readonly CI_WATCH_TIMEOUT_MS = 1_800_000
 
   public static createGitHubRelease (input: {notes: string;
@@ -107,6 +111,8 @@ export class GithubPrimitives {
 
   public static waitForChecks (input: {repository?: string}): void {
 
+    GithubPrimitives.waitForChecksToRegister(input.repository)
+
     ExecCliTool.run(
       'gh',
       GithubPrimitives.toArgumentList(
@@ -136,6 +142,46 @@ export class GithubPrimitives {
 
     const result = parts
     return result
+
+  }
+
+  private static waitForChecksToRegister (repository: string | undefined): void {
+
+    const deadline = Date.now() + GithubPrimitives.CI_REGISTRATION_TIMEOUT_MS
+
+    while (Date.now() < deadline) {
+
+      const result = ExecCliTool.run(
+        'gh',
+        GithubPrimitives.toArgumentList(
+          'pr',
+          'checks',
+          '--json',
+          'name',
+          ...GithubPrimitives.repositoryFlags(repository)
+        ),
+        {allowFail: true}
+      )
+      const checks: unknown[] = result.length > 0
+        ? JSON.parse(result) as unknown[]
+        : []
+
+      if (checks.length > 0) {
+
+        return
+
+      }
+
+      Atomics.wait(
+        new Int32Array(new SharedArrayBuffer(4)),
+        0,
+        0,
+        GithubPrimitives.CI_REGISTRATION_POLL_INTERVAL_MS
+      )
+
+    }
+
+    throw new Error(`No CI checks registered on the pull request within ${String(GithubPrimitives.CI_REGISTRATION_TIMEOUT_MS)}ms.`)
 
   }
 
