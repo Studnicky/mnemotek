@@ -7,6 +7,7 @@ export namespace MergeMethodEntity {
   export const Schema = {
     enum: [
       'merge',
+      'rebase',
       'squash'
     ]
   } as const satisfies JSONSchema

@@ -2,6 +2,8 @@ import type {BranchStructureEntity} from '../entities/index.js'
 
 import {GithubPrimitives} from './githubPrimitives.js'
 import {GitPrimitives} from './gitPrimitives.js'
+import {MergeMethodResolver} from './mergeMethodResolver.js'
+import {PrTemplateInstaller} from './prTemplateInstaller.js'
 
 export class ReleaseFlowSupport {
 
@@ -63,6 +65,8 @@ export class ReleaseFlowSupport {
 
     }
 
+    PrTemplateInstaller.ensureTemplate(process.cwd())
+
     GithubPrimitives.createPr({base: structure.production,
       body: `${label} ${tag}.`,
       repository,
@@ -72,7 +76,14 @@ export class ReleaseFlowSupport {
     GithubPrimitives.waitForChecks({repository})
     steps.push('CI passed')
 
-    GithubPrimitives.mergePr({method: 'merge',
+    const capabilities = GithubPrimitives.repositoryMergeCapabilities(repository)
+    const method = MergeMethodResolver.resolve(
+      capabilities,
+      'merge',
+      'rebase'
+    )
+
+    GithubPrimitives.mergePr({method,
       repository})
     steps.push(`merged ${label.toLowerCase()} PR into ${structure.production}`)
 
