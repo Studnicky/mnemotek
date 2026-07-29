@@ -1,41 +1,51 @@
 import {basename, relative} from 'node:path'
 
-import type {ModuleGraph} from './scanImports.js'
+import type {ModuleGraphInterface} from '../interfaces/ModuleGraphInterface.js'
 
-export function findOrphanModules (root: string, graph: ModuleGraph, entryPointNames: readonly string[] = ['index.ts', 'cli.ts', 'main.ts']): readonly string[] {
+import {FIND_ORPHANS_DEFAULTS} from './constants/FindOrphansConstants.js'
 
-  const imported = new Set<string>()
+export class FindOrphans {
 
-  for (const targets of graph.edges.values()) {
+  public static findOrphanModules (root: string, graph: ModuleGraphInterface, entryPointNames: readonly string[] = FIND_ORPHANS_DEFAULTS.ENTRY_POINT_NAMES): string[] {
 
-    for (const target of targets) {
+    const imported = new Set<string>()
 
-      imported.add(target)
+    for (const targets of graph.edges.values()) {
+
+      for (const target of targets) {
+
+        imported.add(target)
+
+      }
 
     }
+
+    const entryPointSet = new Set(entryPointNames)
+    const orphans: string[] = []
+
+    for (const file of graph.edges.keys()) {
+
+      if (imported.has(file)) {
+
+        continue
+
+      }
+
+      if (entryPointSet.has(basename(file))) {
+
+        continue
+
+      }
+
+      orphans.push(relative(
+        root,
+        file
+      ))
+
+    }
+
+    return orphans
 
   }
-
-  const orphans: string[] = []
-
-  for (const file of graph.edges.keys()) {
-
-    if (imported.has(file)) {
-
-      continue
-
-    }
-
-    if (entryPointNames.includes(basename(file))) {
-
-      continue
-
-    }
-
-    orphans.push(relative(root, file))
-
-  }
-
-  return orphans
 
 }

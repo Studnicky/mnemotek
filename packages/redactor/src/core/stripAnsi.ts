@@ -1,31 +1,42 @@
-const ESC = String.fromCharCode(27)
-const ANSI_PATTERN = new RegExp(
-  `${ESC}\\[[0-9;]*[a-zA-Z]`,
-  'gu'
-)
-const CARRIAGE_RETURN_LINE_PATTERN = /^.*\r(?!\n)/gmu
-const BLANK_LINE_RUN_PATTERN = /\n{3,}/gu
+import {STRIP_ANSI_PATTERNS} from './constants/StripAnsiConstants.js'
 
-export function stripAnsi (input: string): string {
+export class StripAnsi {
 
-  return input.replace(ANSI_PATTERN, '')
+  public static collapseBlankLines (input: string): string {
 
-}
+    const result = input.replace(
+      STRIP_ANSI_PATTERNS.BLANK_LINE_RUN,
+      '\n\n'
+    )
+    return result
 
-export function collapseSpinnerLines (input: string): string {
+  }
 
-  return input.replace(CARRIAGE_RETURN_LINE_PATTERN, '')
+  public static collapseSpinnerLines (input: string): string {
 
-}
+    const result = input.replace(
+      STRIP_ANSI_PATTERNS.CARRIAGE_RETURN_LINE,
+      ''
+    )
+    return result
 
-export function collapseBlankLines (input: string): string {
+  }
 
-  return input.replace(BLANK_LINE_RUN_PATTERN, '\n\n')
+  public static redactText (input: string): string {
 
-}
+    const result = StripAnsi.collapseBlankLines(StripAnsi.collapseSpinnerLines(StripAnsi.stripAnsi(input)))
+    return result
 
-export function redactText (input: string): string {
+  }
 
-  return collapseBlankLines(collapseSpinnerLines(stripAnsi(input)))
+  public static stripAnsi (input: string): string {
+
+    const result = input.replace(
+      STRIP_ANSI_PATTERNS.ANSI_ESCAPE,
+      ''
+    )
+    return result
+
+  }
 
 }

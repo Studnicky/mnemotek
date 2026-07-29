@@ -1,24 +1,37 @@
 import {existsSync, readFileSync} from 'node:fs'
 import {join} from 'node:path'
 
-import type {ModuleGraph} from './scanImports.js'
+import type {ModuleGraphInterface} from '../interfaces/ModuleGraphInterface.js'
 
-export function findUnusedDependencies (root: string, graph: ModuleGraph): readonly string[] {
+export class FindUnusedDeps {
 
-  const packageJsonPath = join(root, 'package.json')
+  public static findUnusedDependencies (root: string, graph: ModuleGraphInterface): string[] {
 
-  if (!existsSync(packageJsonPath)) {
+    const packageJsonPath = join(
+      root,
+      'package.json'
+    )
 
-    return []
+    if (!existsSync(packageJsonPath)) {
+
+      return []
+
+    }
+
+    const packageData = JSON.parse(readFileSync(
+      packageJsonPath,
+      'utf8'
+    )) as {readonly dependencies?: Record<string, string>}
+
+    const declared = Object.keys(packageData.dependencies ?? {})
+
+    return declared.filter((dependency) => {
+
+      const isUnused = !graph.externalSpecifiers.has(dependency)
+      return isUnused
+
+    })
 
   }
-
-  const packageData = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as {
-    readonly dependencies?: Record<string, string>
-  }
-
-  const declared = Object.keys(packageData.dependencies ?? {})
-
-  return declared.filter((dependency) => !graph.externalSpecifiers.has(dependency))
 
 }

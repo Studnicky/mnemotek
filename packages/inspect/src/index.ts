@@ -1,2 +1,2 @@
-export {createInspectApp} from './core/inspectApp.js'
-export {runLocalTool} from './core/runLocalTool.js'
+export {InspectApp} from './core/inspectApp.js'
+export {RunLocalTool} from './core/runLocalTool.js'

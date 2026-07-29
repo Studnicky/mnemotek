@@ -1,61 +1,91 @@
 import {execFileSync} from 'node:child_process'
 
-import {recordGain} from './gainTracker.js'
-import {redactText} from './stripAnsi.js'
+import type {RunRedactedResultEntity} from '../entities/index.js'
 
-export interface RunRedactedResult {
-  readonly [key: string]: unknown
-  readonly bytesAfter: number
-  readonly bytesBefore: number
-  readonly bytesSaved: number
-  readonly exitCode: number
-  readonly output: string
-}
+import {GainTracker} from './gainTracker.js'
+import {StripAnsi} from './stripAnsi.js'
 
-export function runRedacted (input: {
-  readonly args?: readonly string[]
-  readonly command: string
-  readonly root?: string
-}): RunRedactedResult {
+export class RunRedacted {
 
-  const args = input.args ?? []
-  let rawOutput: string
-  let exitCode = 0
+  public static runRedacted (input: {
+    readonly argumentList?: readonly string[];
+    readonly command: string;
+    readonly root?: string;
+  }): RunRedactedResultEntity.Type {
 
-  try {
-
-    rawOutput = execFileSync(
+    const argumentList = input.argumentList ?? []
+    const {exitCode, rawOutput} = RunRedacted.execute(
       input.command,
-      [...args],
-      {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']}
+      argumentList
     )
 
-  } catch (error) {
+    const redacted = StripAnsi.redactText(rawOutput)
+    const bytesBefore = Buffer.byteLength(
+      rawOutput,
+      'utf8'
+    )
+    const bytesAfter = Buffer.byteLength(
+      redacted,
+      'utf8'
+    )
 
-    const execError = error as {readonly status?: number; readonly stdout?: string}
-    rawOutput = execError.stdout ?? ''
-    exitCode = execError.status ?? 1
+    GainTracker.recordGain({
+      bytesAfter,
+      bytesBefore,
+      command: RunRedacted.toArgumentList(
+        input.command,
+        ...argumentList
+      ).join(' '),
+      root: input.root,
+      timestamp: new Date().toISOString()
+    })
+
+    return {
+      bytesAfter,
+      bytesBefore,
+      bytesSaved: bytesBefore - bytesAfter,
+      exitCode,
+      output: redacted
+    }
 
   }
 
-  const redacted = redactText(rawOutput)
-  const bytesBefore = Buffer.byteLength(rawOutput, 'utf8')
-  const bytesAfter = Buffer.byteLength(redacted, 'utf8')
+  private static execute (command: string, argumentList: readonly string[]): {exitCode: number;
+    rawOutput: string;} {
 
-  recordGain({
-    bytesAfter,
-    bytesBefore,
-    command: [input.command, ...args].join(' '),
-    root: input.root,
-    timestamp: new Date().toISOString()
-  })
+    try {
 
-  return {
-    bytesAfter,
-    bytesBefore,
-    bytesSaved: bytesBefore - bytesAfter,
-    exitCode,
-    output: redacted
+      const rawOutput = execFileSync(
+        command,
+        RunRedacted.toArgumentList(...argumentList),
+        {encoding: 'utf8',
+          stdio: [
+            'ignore',
+            'pipe',
+            'pipe'
+          ]}
+      )
+      return {exitCode: 0,
+        rawOutput}
+
+    } catch (error) {
+
+      const execError = error as {readonly status?: number;
+        readonly stdout?: string;}
+      return {
+        exitCode: execError.status ?? 1,
+        rawOutput: execError.stdout ?? ''
+      }
+
+    }
+
+  }
+
+  private static toArgumentList (...parts: string[]): string[] {
+
+    const result = parts
+    return result
+
   }
 
 }

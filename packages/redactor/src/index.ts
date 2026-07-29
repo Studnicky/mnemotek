@@ -1,4 +1,4 @@
-export {readGain, recordGain} from './core/gainTracker.js'
-export {createRedactorApp} from './core/redactorApp.js'
-export {runRedacted} from './core/runRedacted.js'
-export {redactText, stripAnsi} from './core/stripAnsi.js'
+export {GainTracker} from './core/gainTracker.js'
+export {RedactorApp} from './core/redactorApp.js'
+export {RunRedacted} from './core/runRedacted.js'
+export {StripAnsi} from './core/stripAnsi.js'

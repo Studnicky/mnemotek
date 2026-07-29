@@ -11,6 +11,7 @@ import type {Mnemotek} from './mnemotek.js'
 import type {SchemaObjectInterface} from './SchemaObjectInterface.js'
 
 import {MnemotekConfiguration} from '../adapters/mnemotekConfiguration.js'
+import {CamelCaseJoiner} from './camelCaseJoiner.js'
 
 interface CommandOptionDescriptorInterface {
   readonly optionKey: OptionKeyEntity.Type;
@@ -246,15 +247,18 @@ export class MnemotekCli {
     const fieldDescriptors = flat.map((field) => {
 
       return {
-        optionKey: this.toCamelCase(field.path.
-          replaceAll(
-            '.',
-            '-'
-          ).
-          replaceAll(
-            '_',
-            '-'
-          )),
+        optionKey: CamelCaseJoiner.join(
+          field.path.
+            replaceAll(
+              '.',
+              '-'
+            ).
+            replaceAll(
+              '_',
+              '-'
+            ),
+          '-'
+        ),
         optionName: field.path.
           replaceAll(
             '.',
@@ -392,40 +396,6 @@ export class MnemotekCli {
     }
 
     return 'string'
-
-  }
-
-  private static toCamelCase (text: string): string {
-
-    const parts = text.split('-')
-    const normalized: string[] = []
-
-    const partsLength = parts.length
-    for (let index = 0; index < partsLength; index += 1) {
-
-      const part = parts[index]
-      if (part === undefined || part.length === 0) {
-
-        continue
-
-      }
-
-      if (index === 0) {
-
-        normalized.push(part)
-
-      } else {
-
-        const firstCharacter = part.at(0)
-        normalized.push(firstCharacter === undefined
-          ? part
-          : `${firstCharacter.toUpperCase()}${part.slice(1)}`)
-
-      }
-
-    }
-
-    return normalized.join('')
 
   }
 

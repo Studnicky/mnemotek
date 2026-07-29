@@ -1,113 +1,145 @@
-import * as gitPrimitives from './gitPrimitives.js'
-import * as githubPrimitives from './githubPrimitives.js'
-import {bumpVersion, getCurrentVersion, updatePackageVersion, type VersionBump} from './versioning.js'
+import process from 'node:process'
 
-export interface ReleaseFlowResult {
-  readonly [key: string]: unknown
-  readonly error: string | undefined
-  readonly newVersion: string
-  readonly previousVersion: string | undefined
-  readonly releaseBranch: string
-  readonly steps: readonly string[]
-  readonly tag: string
-}
+import type {ReleaseFlowResultEntity, VersionBumpEntity} from '../entities/index.js'
 
-export function releaseFlow (input: {
-  readonly bump?: VersionBump
-  readonly direct?: boolean
-  readonly dryRun?: boolean
-  readonly repo?: string
-  readonly root?: string
-  readonly version?: string
-}): ReleaseFlowResult {
+import {GitPrimitives} from './gitPrimitives.js'
+import {ReleaseFlowSupport} from './releaseFlowSupport.js'
+import {Versioning} from './versioning.js'
 
-  const root = input.root ?? process.cwd()
-  const steps: string[] = []
+export class ReleaseFlow {
 
-  if (gitPrimitives.hasUncommittedChanges()) {
+  public static releaseFlow (input: {bump?: VersionBumpEntity.Type;
+    direct?: boolean;
+    dryRun?: boolean;
+    repository?: string;
+    root?: string;
+    version?: string;}): ReleaseFlowResultEntity.Type {
 
-    return {
-      error: 'Uncommitted changes. Commit first.',
+    const root = input.root ?? process.cwd()
+    const steps: string[] = []
+
+    try {
+
+      GitPrimitives.assertCleanRepositoryState()
+
+    } catch (error) {
+
+      return {error: error instanceof Error
+        ? error.message
+        : String(error),
       newVersion: '',
-      previousVersion: undefined,
       releaseBranch: '',
       steps,
-      tag: ''
+      tag: ''}
+
+    }
+
+    if (GitPrimitives.hasUncommittedChanges()) {
+
+      return {error: 'Uncommitted changes. Commit first.',
+        newVersion: '',
+        releaseBranch: '',
+        steps,
+        tag: ''}
+
+    }
+
+    const structure = GitPrimitives.detectBranchStructure()
+    const sourceBranch = structure.development ?? structure.current
+
+    if (input.dryRun === true) {
+
+      const {newVersion, previousVersion, releaseBranch, tag} = ReleaseFlow.computeVersionAndBranch(
+        root,
+        input
+      )
+
+      return {newVersion,
+        previousVersion,
+        releaseBranch,
+        steps: ['dry-run: no changes made'],
+        tag}
+
+    }
+
+    GitPrimitives.checkoutBranch(sourceBranch)
+    GitPrimitives.pullBranch(sourceBranch)
+    steps.push(`checked out and pulled ${sourceBranch}`)
+
+    const {newVersion, previousVersion, releaseBranch, tag} = ReleaseFlow.computeVersionAndBranch(
+      root,
+      input
+    )
+
+    ReleaseFlowSupport.ensureBranch(
+      releaseBranch,
+      sourceBranch,
+      steps
+    )
+
+    Versioning.updatePackageVersion(
+      root,
+      newVersion
+    )
+    steps.push(`bumped version to ${newVersion}`)
+
+    GitPrimitives.commitAll(`chore(release): ${tag}`)
+    steps.push('committed release changes')
+
+    GitPrimitives.pushBranch(releaseBranch)
+    steps.push(`pushed ${releaseBranch}`)
+
+    ReleaseFlowSupport.integrate(
+      {branch: releaseBranch,
+        direct: input.direct,
+        label: 'Release',
+        repository: input.repository,
+        structure,
+        tag},
+      steps
+    )
+
+    GitPrimitives.checkoutBranch(structure.production)
+    GitPrimitives.pullBranch(structure.production)
+    GitPrimitives.createTag(
+      tag,
+      `Release ${tag}`
+    )
+    steps.push(`tagged ${tag} on ${structure.production}`)
+
+    ReleaseFlowSupport.backmerge(
+      structure,
+      steps
+    )
+
+    GitPrimitives.deleteLocalBranch(releaseBranch)
+
+    return {newVersion,
+      previousVersion,
+      releaseBranch,
+      steps,
+      tag}
+
+  }
+
+  private static computeVersionAndBranch (root: string, input: {bump?: VersionBumpEntity.Type;
+    version?: string;}): {newVersion: string;
+    previousVersion: string | undefined;
+    releaseBranch: string;
+    tag: string;} {
+
+    const {newVersion, previousVersion} = Versioning.computeVersion({bump: input.bump ?? 'patch',
+      defaultVersion: '0.1.0',
+      requestedVersion: input.version,
+      root})
+
+    return {
+      newVersion,
+      previousVersion,
+      releaseBranch: `release/${newVersion}`,
+      tag: `v${newVersion}`
     }
 
   }
-
-  const structure = gitPrimitives.detectBranchStructure()
-  const sourceBranch = structure.development ?? structure.current
-  const previousVersion = getCurrentVersion(root)
-  const newVersion = input.version ?? (previousVersion === undefined
-    ? '0.1.0'
-    : bumpVersion(previousVersion, input.bump ?? 'patch'))
-  const tag = `v${newVersion}`
-  const releaseBranch = `release/${newVersion}`
-
-  if (input.dryRun === true) {
-
-    return {error: undefined, newVersion, previousVersion, releaseBranch, steps: ['dry-run: no changes made'], tag}
-
-  }
-
-  gitPrimitives.checkoutBranch(sourceBranch)
-  gitPrimitives.pullBranch(sourceBranch)
-  steps.push(`checked out and pulled ${sourceBranch}`)
-
-  gitPrimitives.createBranch(releaseBranch, sourceBranch)
-  steps.push(`created ${releaseBranch}`)
-
-  updatePackageVersion(root, newVersion)
-  steps.push(`bumped version to ${newVersion}`)
-
-  gitPrimitives.commitAll(`chore(release): ${tag}`)
-  steps.push('committed release changes')
-
-  gitPrimitives.pushBranch(releaseBranch)
-  steps.push(`pushed ${releaseBranch}`)
-
-  const protectedTarget = githubPrimitives.isBranchProtected(structure.production, input.repo)
-  const useDirect = input.direct === true && !protectedTarget
-
-  if (useDirect) {
-
-    gitPrimitives.mergeBranch(structure.production, releaseBranch)
-    steps.push(`merged ${releaseBranch} into ${structure.production} directly`)
-
-  } else {
-
-    githubPrimitives.createPr({
-      base: structure.production,
-      body: `Release ${tag}.`,
-      repo: input.repo,
-      title: `Release ${tag}`
-    })
-    steps.push('opened release PR')
-
-    githubPrimitives.waitForChecks({repo: input.repo})
-    steps.push('CI passed')
-
-    githubPrimitives.mergePr({method: 'merge', repo: input.repo})
-    steps.push(`merged release PR into ${structure.production}`)
-
-  }
-
-  gitPrimitives.checkoutBranch(structure.production)
-  gitPrimitives.pullBranch(structure.production)
-  gitPrimitives.createTag(tag, `Release ${tag}`)
-  steps.push(`tagged ${tag} on ${structure.production}`)
-
-  if (structure.development !== undefined && structure.development !== structure.production) {
-
-    gitPrimitives.mergeBranch(structure.development, structure.production)
-    steps.push(`back-merged ${structure.production} into ${structure.development}`)
-
-  }
-
-  gitPrimitives.deleteLocalBranch(releaseBranch)
-
-  return {error: undefined, newVersion, previousVersion, releaseBranch, steps, tag}
 
 }

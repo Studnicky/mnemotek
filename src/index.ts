@@ -1,4 +1,6 @@
 export {MnemotekConfiguration} from './adapters/mnemotekConfiguration.js'
 export {Mnemotek} from './core/mnemotek.js'
+export {MnemotekAppFactory} from './core/mnemotekAppFactory.js'
 export {MnemotekCli} from './core/mnemotekCli.js'
 export {MnemotekMcp} from './core/mnemotekMcp.js'
+export {PayloadOptions} from './core/payloadOptions.js'

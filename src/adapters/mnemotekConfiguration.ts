@@ -8,6 +8,9 @@ import process from 'node:process'
 import type {SchemaObjectInterface} from '../core/SchemaObjectInterface.js'
 import type {OptionPathEntity} from '../entities/OptionPathEntity.js'
 
+import {CamelCaseJoiner} from '../core/camelCaseJoiner.js'
+import {RecordGuard} from '../core/RecordGuard.js'
+
 interface FlatSchemaFieldInterface {
   readonly path: OptionPathEntity.Type;
   readonly schema: SchemaObjectInterface;
@@ -78,7 +81,7 @@ export class MnemotekConfiguration {
     const commandLineArguments = loadOptions.commandLineArguments ?? {}
     const flatFields = this.collectFlatSchema(loadOptions.schema)
     const defaults = this.applyDefaultsToObject(loadOptions.schema)
-    const defaultsSource = this.isRecord(defaults)
+    const defaultsSource = RecordGuard.isRecord(defaults)
       ? Clone.deep(defaults)
       : {}
     const packageSource = this.readPackageJsonSource({
@@ -168,7 +171,7 @@ export class MnemotekConfiguration {
 
   private static applyDefaultsToObject (schema: SchemaObjectInterface): unknown {
 
-    if (!this.isRecordSchema(schema) || !this.isRecord(schema.properties)) {
+    if (!this.isRecordSchema(schema) || !RecordGuard.isRecord(schema.properties)) {
 
       return this.defaultSchemaValue(schema)
 
@@ -186,7 +189,7 @@ export class MnemotekConfiguration {
 
       }
       const propertyDefault = this.applyDefaultsToObject(propertySchema)
-      const isNestedDefaultsEmpty = this.isRecord(propertyDefault)
+      const isNestedDefaultsEmpty = RecordGuard.isRecord(propertyDefault)
         ? Object.keys(propertyDefault).length === 0
         : false
       if (propertyDefault !== undefined && !isNestedDefaultsEmpty) {
@@ -545,15 +548,9 @@ export class MnemotekConfiguration {
     readonly type: 'object';
   } {
 
-    return this.isRecord(schema) &&
+    return RecordGuard.isRecord(schema) &&
       schema.type === 'object' &&
-      this.isRecord(schema.properties)
-
-  }
-
-  private static isRecord (value: unknown): value is Record<string, unknown> {
-
-    return value !== null && typeof value === 'object' && !Array.isArray(value)
+      RecordGuard.isRecord(schema.properties)
 
   }
 
@@ -561,38 +558,6 @@ export class MnemotekConfiguration {
 
     const result = this.isObjectSchema(schema)
     return result
-
-  }
-
-  private static normalizeObjectPath (pathValue: string): string {
-
-    const segments = pathValue.split('.')
-    const normalizedSegments: string[] = []
-
-    const segmentsLength = segments.length
-    for (let segmentIndex = 0; segmentIndex < segmentsLength; segmentIndex += 1) {
-
-      const segment = segments[segmentIndex]
-      if (segment !== undefined && segment.length > 0) {
-
-        if (segmentIndex === 0) {
-
-          normalizedSegments.push(segment)
-
-        } else {
-
-          const firstCharacter = segment.at(0)
-          normalizedSegments.push(firstCharacter === undefined
-            ? segment
-            : `${firstCharacter.toUpperCase()}${segment.slice(1)}`)
-
-        }
-
-      }
-
-    }
-
-    return normalizedSegments.join('')
 
   }
 
@@ -611,7 +576,10 @@ export class MnemotekConfiguration {
         field
       )
       aliases.set(
-        this.normalizeObjectPath(field.path),
+        CamelCaseJoiner.join(
+          field.path,
+          '.'
+        ),
         field
       )
       aliases.set(
@@ -648,13 +616,10 @@ export class MnemotekConfiguration {
       const field = aliases.get(argumentName)
       if (field !== undefined) {
 
-        this.writePath({
-          path: field.path,
-          source,
-          value: this.coerceValue({
-            schema: field.schema,
-            value: argumentValue
-          })
+        this.writeCoercedField({
+          field,
+          rawValue: argumentValue,
+          source
         })
 
       }
@@ -764,13 +729,10 @@ export class MnemotekConfiguration {
       const rawValue = values.get(environmentName)
       if (rawValue !== undefined) {
 
-        this.writePath({
-          path: field.path,
-          source,
-          value: this.coerceValue({
-            schema: field.schema,
-            value: rawValue
-          })
+        this.writeCoercedField({
+          field,
+          rawValue,
+          source
         })
 
       }
@@ -845,7 +807,7 @@ export class MnemotekConfiguration {
       'utf-8'
     )
     const configurationValue = JSON.parse(configurationText)
-    if (!this.isRecord(configurationValue)) {
+    if (!RecordGuard.isRecord(configurationValue)) {
 
       if (overridePath.length > 0) {
 
@@ -857,17 +819,10 @@ export class MnemotekConfiguration {
 
     }
 
-    const {commands} = configurationValue
-    const commandConfiguration = this.isRecord(commands) && this.isRecord(commands[details.commandName])
-      ? commands[details.commandName]
-      : configurationValue[details.commandName]
-    if (this.isRecord(commandConfiguration)) {
-
-      return commandConfiguration
-
-    }
-
-    return configurationValue
+    return MnemotekConfiguration.resolveCommandConfiguration(
+      configurationValue,
+      details.commandName
+    )
 
   }
 
@@ -892,30 +847,23 @@ export class MnemotekConfiguration {
       'utf-8'
     )
     const packageContent = JSON.parse(packageText)
-    if (!this.isRecord(packageContent)) {
+    if (!RecordGuard.isRecord(packageContent)) {
 
       return {}
 
     }
 
     const appConfiguration = packageContent[details.appName]
-    if (!this.isRecord(appConfiguration)) {
+    if (!RecordGuard.isRecord(appConfiguration)) {
 
       return {}
 
     }
 
-    const {commands} = appConfiguration
-    const commandConfiguration = this.isRecord(commands) && this.isRecord(commands[details.commandName])
-      ? commands[details.commandName]
-      : appConfiguration[details.commandName]
-    if (this.isRecord(commandConfiguration)) {
-
-      return commandConfiguration
-
-    }
-
-    return appConfiguration
+    return MnemotekConfiguration.resolveCommandConfiguration(
+      appConfiguration,
+      details.commandName
+    )
 
   }
 
@@ -944,9 +892,22 @@ export class MnemotekConfiguration {
 
   }
 
+  private static resolveCommandConfiguration (topLevel: Record<string, unknown>, commandName: string): Record<string, unknown> {
+
+    const {commands} = topLevel
+    const commandConfiguration = RecordGuard.isRecord(commands) && RecordGuard.isRecord(commands[commandName])
+      ? commands[commandName]
+      : topLevel[commandName]
+
+    return RecordGuard.isRecord(commandConfiguration)
+      ? commandConfiguration
+      : topLevel
+
+  }
+
   private static resolveDefaultToObject (schema: SchemaObjectInterface): unknown {
 
-    if (schema.type === 'object' && this.isRecord(schema.properties)) {
+    if (schema.type === 'object' && RecordGuard.isRecord(schema.properties)) {
 
       const defaults: Record<string, unknown> = {}
 
@@ -1000,7 +961,7 @@ export class MnemotekConfiguration {
 
     for (const segment of segments) {
 
-      if (!this.isRecord(cursor)) {
+      if (!RecordGuard.isRecord(cursor)) {
 
         return undefined
 
@@ -1172,6 +1133,23 @@ export class MnemotekConfiguration {
 
   }
 
+  private static writeCoercedField (details: {
+    readonly field: FlatSchemaFieldInterface;
+    readonly rawValue: unknown;
+    readonly source: Record<string, unknown>;
+  }): void {
+
+    this.writePath({
+      path: details.field.path,
+      source: details.source,
+      value: this.coerceValue({
+        schema: details.field.schema,
+        value: details.rawValue
+      })
+    })
+
+  }
+
   private static writePath (details: {
     readonly path: string;
     readonly source: Record<string, unknown>;
@@ -1182,15 +1160,10 @@ export class MnemotekConfiguration {
     let cursor: Record<string, unknown> = details.source
     const leafIndex = segments.length - 1
 
-    const segmentsLength = segments.length
-    for (let index = 0; index < segmentsLength; index += 1) {
-
-      const segment = segments[index]
-      if (segment === undefined) {
-
-        return
-
-      }
+    for (const [
+      index,
+      segment
+    ] of segments.entries()) {
 
       if (index === leafIndex) {
 
@@ -1200,13 +1173,13 @@ export class MnemotekConfiguration {
       }
 
       const nested = cursor[segment]
-      if (!this.isRecord(nested)) {
+      if (!RecordGuard.isRecord(nested)) {
 
         cursor[segment] = {}
 
       }
       const nextNode = cursor[segment]
-      if (this.isRecord(nextNode)) {
+      if (RecordGuard.isRecord(nextNode)) {
 
         cursor = nextNode
 

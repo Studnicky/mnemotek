@@ -1,90 +1,121 @@
-import {Mnemotek} from '@studnicky/mnemotek'
+import {Mnemotek, MnemotekAppFactory} from '@studnicky/mnemotek'
 
-import {readGain} from './gainTracker.js'
-import {runRedacted} from './runRedacted.js'
-import {redactText} from './stripAnsi.js'
+import type {GainSummaryEntity, RunRedactedResultEntity} from '../entities/index.js'
 
-export function createRedactorApp (): Mnemotek {
+import {GainTracker} from './gainTracker.js'
+import {RunRedacted} from './runRedacted.js'
+import {StripAnsi} from './stripAnsi.js'
 
-  const app = new Mnemotek({
-    description: 'Strip ANSI/spinner noise from command output and track token savings. No server, no external filters.',
-    name: 'redactor-tool',
-    version: '0.1.0'
-  })
+export class RedactorApp {
 
-  app.command({
-    description: 'Redact raw text: strip ANSI escapes, collapse spinner overwrites, collapse blank-line runs.',
-    name: 'text',
-    runner: (payload) => {
+  public static createRedactorApp (): Mnemotek {
 
-      if (typeof payload.input !== 'string') {
+    const app = new Mnemotek({
+      description: 'Strip ANSI/spinner noise from command output and track token savings. No server, no external filters.',
+      name: 'redactor-tool',
+      version: '0.1.0'
+    })
 
-        throw new TypeError('text requires a string "input".')
-
-      }
-
-      return {output: redactText(payload.input)}
-
-    },
-    schema: {
-      additionalProperties: false,
-      properties: {
-        input: {description: 'Raw text to redact.', type: 'string'}
+    MnemotekAppFactory.registerCommands(
+      app,
+      {
+        description: 'Redact raw text: strip ANSI escapes, collapse spinner overwrites, collapse blank-line runs.',
+        name: 'text',
+        runner: RedactorApp.textRunner,
+        schema: {
+          additionalProperties: false,
+          properties: {
+            input: {description: 'Raw text to redact.',
+              type: 'string'}
+          },
+          required: ['input'],
+          type: 'object'
+        }
       },
-      required: ['input'],
-      type: 'object'
-    }
-  })
-
-  app.command({
-    description: 'Run a command, redact its output, and record token savings.',
-    name: 'run',
-    runner: (payload) => {
-
-      if (typeof payload.command !== 'string') {
-
-        throw new TypeError('run requires a string "command".')
-
+      {
+        description: 'Run a command, redact its output, and record token savings.',
+        name: 'run',
+        runner: RedactorApp.runRunner,
+        schema: {
+          additionalProperties: false,
+          properties: {
+            argumentList: {description: 'Arguments to pass to the command.',
+              items: {type: 'string'},
+              type: 'array'},
+            command: {description: 'Executable to run.',
+              type: 'string'},
+            root: {description: 'Directory to store the gain log under. Defaults to the current directory.',
+              type: 'string'}
+          },
+          required: ['command'],
+          type: 'object'
+        }
+      },
+      {
+        description: 'Show cumulative token/byte savings across all recorded runs.',
+        name: 'gain',
+        runner: RedactorApp.gainRunner,
+        schema: {
+          additionalProperties: false,
+          properties: {
+            root: {description: 'Directory the gain log is stored under. Defaults to the current directory.',
+              type: 'string'}
+          },
+          type: 'object'
+        }
       }
+    )
+    return app
 
-      const args = Array.isArray(payload.args)
-        ? payload.args.filter((value): value is string => typeof value === 'string')
-        : []
+  }
 
-      return runRedacted({
-        args,
-        command: payload.command,
-        root: typeof payload.root === 'string' ? payload.root : undefined
+  private static readonly gainRunner = (payload: Record<string, unknown>): GainSummaryEntity.Type => {
+
+    const result = GainTracker.readGain({
+      root: typeof payload.root === 'string'
+        ? payload.root
+        : undefined
+    })
+    return result
+
+  }
+
+  private static readonly runRunner = (payload: Record<string, unknown>): RunRedactedResultEntity.Type => {
+
+    if (typeof payload.command !== 'string') {
+
+      throw new TypeError('run requires a string "command".')
+
+    }
+
+    const argumentList = Array.isArray(payload.argumentList)
+      ? payload.argumentList.filter((value): value is string => {
+
+        return typeof value === 'string'
+
       })
+      : []
 
-    },
-    schema: {
-      additionalProperties: false,
-      properties: {
-        args: {description: 'Arguments to pass to the command.', items: {type: 'string'}, type: 'array'},
-        command: {description: 'Executable to run.', type: 'string'},
-        root: {description: 'Directory to store the gain log under. Defaults to the current directory.', type: 'string'}
-      },
-      required: ['command'],
-      type: 'object'
+    return RunRedacted.runRedacted({
+      argumentList,
+      command: payload.command,
+      root: typeof payload.root === 'string'
+        ? payload.root
+        : undefined
+    })
+
+  }
+
+  private static readonly textRunner = (payload: Record<string, unknown>): {output: string} => {
+
+    if (typeof payload.input !== 'string') {
+
+      throw new TypeError('text requires a string "input".')
+
     }
-  })
 
-  app.command({
-    description: 'Show cumulative token/byte savings across all recorded runs.',
-    name: 'gain',
-    runner: (payload) => readGain({
-      root: typeof payload.root === 'string' ? payload.root : undefined
-    }),
-    schema: {
-      additionalProperties: false,
-      properties: {
-        root: {description: 'Directory the gain log is stored under. Defaults to the current directory.', type: 'string'}
-      },
-      type: 'object'
-    }
-  })
+    return {output: StripAnsi.redactText(payload.input)}
 
-  return app
+  }
 
 }

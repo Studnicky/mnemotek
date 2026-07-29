@@ -13,6 +13,7 @@ import type {SchemaObjectInterface} from './SchemaObjectInterface.js'
 
 import {MnemotekConfiguration} from '../adapters/mnemotekConfiguration.js'
 import {TOOL_NAME_CLEANUP_REGEX} from './constants/tool-patterns.js'
+import {RecordGuard} from './RecordGuard.js'
 
 interface ToolCallContentInterface {
   readonly text: TextSchemaEntity.Type;
@@ -133,15 +134,9 @@ export class MnemotekMcp {
 
   }
 
-  private static isObject (value: unknown): value is Record<string, unknown> {
-
-    return value !== null && typeof value === 'object' && !Array.isArray(value)
-
-  }
-
   private static isRecordSchemaProperties (value: unknown): value is Record<string, SchemaObjectInterface> {
 
-    if (!MnemotekMcp.isObject(value)) {
+    if (!RecordGuard.isRecord(value)) {
 
       return false
 

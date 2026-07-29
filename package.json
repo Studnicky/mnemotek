@@ -34,7 +34,8 @@
     "./entities": {
       "types": "./dist/entities/index.d.ts",
       "import": "./dist/entities/index.js"
-    }
+    },
+    "./eslint-config": "./eslint.config.shared.mjs"
   },
   "files": [
     "dist",

@@ -2,7 +2,7 @@
 import {MnemotekCli} from '@studnicky/mnemotek'
 import process from 'node:process'
 
-import {createRedactorApp} from '../core/redactorApp.js'
+import {RedactorApp} from '../core/redactorApp.js'
 
-const exitCode = await MnemotekCli.execute(createRedactorApp())
+const exitCode = await MnemotekCli.execute(RedactorApp.createRedactorApp())
 process.exitCode = exitCode

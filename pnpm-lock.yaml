@@ -81,6 +81,9 @@ importers:
 
   packages/config-standards:
     dependencies:
+      '@studnicky/json':
+        specifier: ^9.2.0
+        version: 9.2.0
       '@studnicky/mnemotek':
         specifier: workspace:*
         version: link:../..
@@ -94,18 +97,27 @@ importers:
       '@types/node':
         specifier: ^26.1.1
         version: 26.1.1
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+      eslint:
+        specifier: ^10.8.0
+        version: 10.8.0
+      json-schema-to-ts:
+        specifier: ^3.1.1
+        version: 3.1.1
       tsx:
         specifier: ^4.23.1
         version: 4.23.1
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
-      typescript-eslint:
-        specifier: ^8.65.0
-        version: 8.65.0(eslint@10.8.0)(typescript@6.0.3)
 
   packages/deps-audit:
     dependencies:
+      '@studnicky/json':
+        specifier: ^9.2.0
+        version: 9.2.0
       '@studnicky/mnemotek':
         specifier: workspace:*
         version: link:../..
@@ -119,18 +131,27 @@ importers:
       '@types/node':
         specifier: ^26.1.1
         version: 26.1.1
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+      eslint:
+        specifier: ^10.8.0
+        version: 10.8.0
+      json-schema-to-ts:
+        specifier: ^3.1.1
+        version: 3.1.1
       tsx:
         specifier: ^4.23.1
         version: 4.23.1
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
-      typescript-eslint:
-        specifier: ^8.65.0
-        version: 8.65.0(eslint@10.8.0)(typescript@6.0.3)
 
   packages/git-flow:
     dependencies:
+      '@studnicky/json':
+        specifier: ^9.2.0
+        version: 9.2.0
       '@studnicky/mnemotek':
         specifier: workspace:*
         version: link:../..
@@ -144,18 +165,27 @@ importers:
       '@types/node':
         specifier: ^26.1.1
         version: 26.1.1
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+      eslint:
+        specifier: ^10.8.0
+        version: 10.8.0
+      json-schema-to-ts:
+        specifier: ^3.1.1
+        version: 3.1.1
       tsx:
         specifier: ^4.23.1
         version: 4.23.1
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
-      typescript-eslint:
-        specifier: ^8.65.0
-        version: 8.65.0(eslint@10.8.0)(typescript@6.0.3)
 
   packages/inspect:
     dependencies:
+      '@studnicky/json':
+        specifier: ^9.2.0
+        version: 9.2.0
       '@studnicky/mnemotek':
         specifier: workspace:*
         version: link:../..
@@ -169,18 +199,27 @@ importers:
       '@types/node':
         specifier: ^26.1.1
         version: 26.1.1
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+      eslint:
+        specifier: ^10.8.0
+        version: 10.8.0
+      json-schema-to-ts:
+        specifier: ^3.1.1
+        version: 3.1.1
       tsx:
         specifier: ^4.23.1
         version: 4.23.1
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
-      typescript-eslint:
-        specifier: ^8.65.0
-        version: 8.65.0(eslint@10.8.0)(typescript@6.0.3)
 
   packages/redactor:
     dependencies:
+      '@studnicky/json':
+        specifier: ^9.2.0
+        version: 9.2.0
       '@studnicky/mnemotek':
         specifier: workspace:*
         version: link:../..
@@ -194,15 +233,21 @@ importers:
       '@types/node':
         specifier: ^26.1.1
         version: 26.1.1
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+      eslint:
+        specifier: ^10.8.0
+        version: 10.8.0
+      json-schema-to-ts:
+        specifier: ^3.1.1
+        version: 3.1.1
       tsx:
         specifier: ^4.23.1
         version: 4.23.1
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
-      typescript-eslint:
-        specifier: ^8.65.0
-        version: 8.65.0(eslint@10.8.0)(typescript@6.0.3)
 
 packages:
 

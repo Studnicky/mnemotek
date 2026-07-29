@@ -1,105 +1,176 @@
-import {appendFileSync, existsSync, mkdirSync, readFileSync} from 'node:fs'
+import {appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs'
 import {dirname, join} from 'node:path'
+import process from 'node:process'
 
-export interface GainEntry {
-  readonly [key: string]: unknown
-  readonly bytesAfter: number
-  readonly bytesBefore: number
-  readonly command: string
-  readonly timestamp: string
-}
+import type {GainSummaryEntity} from '../entities/index.js'
 
-export interface GainSummary {
-  readonly [key: string]: unknown
-  readonly entryCount: number
-  readonly totalBytesAfter: number
-  readonly totalBytesBefore: number
-  readonly totalBytesSaved: number
-  readonly topCommands: readonly {
-    readonly bytesSaved: number
-    readonly command: string
-  }[]
-}
+import {GainEntryEntity} from '../entities/index.js'
+import {GAIN_TRACKER_LIMITS} from './constants/GainTrackerConstants.js'
 
-function logPath (root: string): string {
+export class GainTracker {
 
-  return join(root, '.redactor', 'gain.ndjson')
+  public static readGain (input: {readonly root?: string}): GainSummaryEntity.Type {
 
-}
+    const root = input.root ?? process.cwd()
+    const filePath = GainTracker.logPath(root)
 
-export function recordGain (input: {
-  readonly bytesAfter: number
-  readonly bytesBefore: number
-  readonly command: string
-  readonly root?: string
-  readonly timestamp: string
-}): void {
+    if (!existsSync(filePath)) {
 
-  const root = input.root ?? process.cwd()
-  const filePath = logPath(root)
+      return {
+        entryCount: 0,
+        topCommands: [],
+        totalBytesAfter: 0,
+        totalBytesBefore: 0,
+        totalBytesSaved: 0
+      }
 
-  mkdirSync(dirname(filePath), {recursive: true})
+    }
 
-  const entry: GainEntry = {
-    bytesAfter: input.bytesAfter,
-    bytesBefore: input.bytesBefore,
-    command: input.command,
-    timestamp: input.timestamp
-  }
+    const entries = GainTracker.readEntries(filePath)
+    const perCommand = new Map<string, number>()
 
-  appendFileSync(filePath, `${JSON.stringify(entry)}\n`)
+    let totalBytesBefore = 0
+    let totalBytesAfter = 0
 
-}
+    for (const entry of entries) {
 
-export function readGain (input: {
-  readonly root?: string
-}): GainSummary {
+      totalBytesBefore += entry.bytesBefore
+      totalBytesAfter += entry.bytesAfter
+      const saved = entry.bytesBefore - entry.bytesAfter
+      perCommand.set(
+        entry.command,
+        (perCommand.get(entry.command) ?? 0) + saved
+      )
 
-  const root = input.root ?? process.cwd()
-  const filePath = logPath(root)
+    }
 
-  if (!existsSync(filePath)) {
+    const topCommands = [...perCommand.entries()].
+      sort((commandEntryA, commandEntryB) => {
+
+        return commandEntryB[1] - commandEntryA[1]
+
+      }).
+      slice(
+        0,
+        10
+      ).
+      map(([
+        command,
+        bytesSaved
+      ]) => {
+
+        return {bytesSaved,
+          command}
+
+      })
 
     return {
-      entryCount: 0,
-      topCommands: [],
-      totalBytesAfter: 0,
-      totalBytesBefore: 0,
-      totalBytesSaved: 0
+      entryCount: entries.length,
+      topCommands,
+      totalBytesAfter,
+      totalBytesBefore,
+      totalBytesSaved: totalBytesBefore - totalBytesAfter
     }
 
   }
 
-  const lines = readFileSync(filePath, 'utf8').
-    split('\n').
-    filter((line) => line.trim().length > 0)
+  public static recordGain (input: {
+    readonly bytesAfter: number;
+    readonly bytesBefore: number;
+    readonly command: string;
+    readonly root?: string;
+    readonly timestamp: string;
+  }): void {
 
-  const entries = lines.map((line) => JSON.parse(line) as GainEntry)
-  const perCommand = new Map<string, number>()
+    const root = input.root ?? process.cwd()
+    const filePath = GainTracker.logPath(root)
 
-  let totalBytesBefore = 0
-  let totalBytesAfter = 0
+    mkdirSync(
+      dirname(filePath),
+      {recursive: true}
+    )
 
-  for (const entry of entries) {
+    const entry: GainEntryEntity.Type = {
+      bytesAfter: input.bytesAfter,
+      bytesBefore: input.bytesBefore,
+      command: input.command,
+      timestamp: input.timestamp
+    }
 
-    totalBytesBefore += entry.bytesBefore
-    totalBytesAfter += entry.bytesAfter
-    const saved = entry.bytesBefore - entry.bytesAfter
-    perCommand.set(entry.command, (perCommand.get(entry.command) ?? 0) + saved)
+    appendFileSync(
+      filePath,
+      `${JSON.stringify(entry)}\n`
+    )
+
+    GainTracker.enforceEntryLimit(filePath)
 
   }
 
-  const topCommands = [...perCommand.entries()].
-    sort((commandA, commandB) => commandB[1] - commandA[1]).
-    slice(0, 10).
-    map(([command, bytesSaved]) => ({bytesSaved, command}))
+  private static enforceEntryLimit (filePath: string): void {
 
-  return {
-    entryCount: entries.length,
-    topCommands,
-    totalBytesAfter,
-    totalBytesBefore,
-    totalBytesSaved: totalBytesBefore - totalBytesAfter
+    const entries = GainTracker.readEntries(filePath)
+
+    if (entries.length <= GAIN_TRACKER_LIMITS.MAXIMUM_ENTRIES) {
+
+      return
+
+    }
+
+    const trimmedEntries = entries.slice(entries.length - GAIN_TRACKER_LIMITS.MAXIMUM_ENTRIES)
+    const serializedLines = trimmedEntries.map((trimmedEntry) => {
+
+      const result = JSON.stringify(trimmedEntry)
+      return result
+
+    })
+
+    writeFileSync(
+      filePath,
+      `${serializedLines.join('\n')}\n`
+    )
+
+  }
+
+  private static logPath (root: string): string {
+
+    const result = join(
+      root,
+      '.redactor',
+      'gain.ndjson'
+    )
+    return result
+
+  }
+
+  private static readEntries (filePath: string): GainEntryEntity.Type[] {
+
+    const lines = readFileSync(
+      filePath,
+      'utf8'
+    ).
+      split('\n').
+      filter((line) => {
+
+        return line.trim().length > 0
+
+      })
+
+    const entries: GainEntryEntity.Type[] = []
+
+    for (const line of lines) {
+
+      const parsed: unknown = JSON.parse(line)
+
+      if (GainEntryEntity.validate(parsed)) {
+
+        entries.push(parsed)
+
+      }
+
+    }
+
+    return entries
+
   }
 
 }

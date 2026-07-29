@@ -1,17 +1,3 @@
-import js from '@eslint/js'
-import tseslint from 'typescript-eslint'
+import {createMnemotekEslintConfig} from '@studnicky/mnemotek/eslint-config'
 
-export default tseslint.config(
-  {
-    ignores: ['dist/**', 'node_modules/**', '**/*.d.ts']
-  },
-  js.configs.recommended,
-  ...tseslint.configs.recommended,
-  {
-    languageOptions: {
-      parserOptions: {
-        tsconfigRootDir: import.meta.dirname
-      }
-    }
-  }
-)
+export default createMnemotekEslintConfig({tsconfigRootDir: import.meta.dirname})

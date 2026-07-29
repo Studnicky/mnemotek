@@ -1,93 +1,121 @@
-import {execFileSync} from 'node:child_process'
+import type {MergeMethodEntity} from '../entities/index.js'
 
-const CI_WATCH_TIMEOUT_MS = 1_800_000
+import {ExecCliTool} from './execCliTool.js'
 
-function gh (args: readonly string[], options: {readonly allowFail?: boolean; readonly timeout?: number} = {}): string {
+export class GithubPrimitives {
 
-  try {
+  private static readonly CI_WATCH_TIMEOUT_MS = 1_800_000
 
-    return execFileSync('gh', [...args], {encoding: 'utf8', timeout: options.timeout}).trim()
+  public static createGitHubRelease (input: {notes: string;
+    repository?: string;
+    tag: string;}): string {
 
-  } catch (error) {
-
-    if (options.allowFail === true) {
-
-      return ''
-
-    }
-
-    throw error
+    const result = ExecCliTool.run(
+      'gh',
+      GithubPrimitives.toArgumentList(
+        'release',
+        'create',
+        input.tag,
+        '--title',
+        input.tag,
+        '--notes',
+        input.notes,
+        ...GithubPrimitives.repositoryFlags(input.repository)
+      )
+    )
+    return result
 
   }
 
-}
+  public static createPr (input: {base: string;
+    body: string;
+    repository?: string;
+    title: string;}): string {
 
-export function isBranchProtected (branch: string, repo?: string): boolean {
+    const result = ExecCliTool.run(
+      'gh',
+      GithubPrimitives.toArgumentList(
+        'pr',
+        'create',
+        '--base',
+        input.base,
+        '--title',
+        input.title,
+        '--body',
+        input.body,
+        ...GithubPrimitives.repositoryFlags(input.repository)
+      )
+    )
+    return result
 
-  const repoArgs = repo === undefined ? [] : ['--repo', repo]
-  const result = gh(['api', `repos/{owner}/{repo}/branches/${branch}/protection`, ...repoArgs], {allowFail: true})
-  return result.length > 0
+  }
 
-}
+  public static isBranchProtected (branch: string, repository?: string): boolean {
 
-export function createPr (input: {
-  readonly base: string
-  readonly body: string
-  readonly repo?: string
-  readonly title: string
-}): string {
+    const result = ExecCliTool.run(
+      'gh',
+      GithubPrimitives.toArgumentList(
+        'api',
+        `repos/{owner}/{repo}/branches/${branch}/protection`,
+        ...GithubPrimitives.repositoryFlags(repository)
+      ),
+      {allowFail: true}
+    )
+    return result.length > 0
 
-  const repoArgs = input.repo === undefined ? [] : ['--repo', input.repo]
-  return gh([
-    'pr',
-    'create',
-    '--base',
-    input.base,
-    '--title',
-    input.title,
-    '--body',
-    input.body,
-    ...repoArgs
-  ])
+  }
 
-}
+  public static mergePr (input: {method?: MergeMethodEntity.Type;
+    repository?: string;}): void {
 
-export function waitForChecks (input: {
-  readonly repo?: string
-}): void {
+    const methodFlag = input.method === 'merge'
+      ? '--merge'
+      : '--squash'
+    ExecCliTool.run(
+      'gh',
+      GithubPrimitives.toArgumentList(
+        'pr',
+        'merge',
+        methodFlag,
+        '--delete-branch',
+        ...GithubPrimitives.repositoryFlags(input.repository)
+      )
+    )
 
-  const repoArgs = input.repo === undefined ? [] : ['--repo', input.repo]
-  gh(['pr', 'checks', '--watch', '--fail-fast', ...repoArgs], {timeout: CI_WATCH_TIMEOUT_MS})
+  }
 
-}
+  public static waitForChecks (input: {repository?: string}): void {
 
-export function mergePr (input: {
-  readonly method?: 'merge' | 'squash'
-  readonly repo?: string
-}): void {
+    ExecCliTool.run(
+      'gh',
+      GithubPrimitives.toArgumentList(
+        'pr',
+        'checks',
+        '--watch',
+        '--fail-fast',
+        ...GithubPrimitives.repositoryFlags(input.repository)
+      ),
+      {timeout: GithubPrimitives.CI_WATCH_TIMEOUT_MS}
+    )
 
-  const repoArgs = input.repo === undefined ? [] : ['--repo', input.repo]
-  const methodFlag = input.method === 'merge' ? '--merge' : '--squash'
-  gh(['pr', 'merge', methodFlag, '--delete-branch', ...repoArgs])
+  }
 
-}
+  private static repositoryFlags (repository: string | undefined): string[] {
 
-export function createGitHubRelease (input: {
-  readonly notes: string
-  readonly repo?: string
-  readonly tag: string
-}): string {
+    return repository === undefined
+      ? []
+      : GithubPrimitives.toArgumentList(
+        '--repo',
+        repository
+      )
 
-  const repoArgs = input.repo === undefined ? [] : ['--repo', input.repo]
-  return gh([
-    'release',
-    'create',
-    input.tag,
-    '--title',
-    input.tag,
-    '--notes',
-    input.notes,
-    ...repoArgs
-  ])
+  }
+
+  private static toArgumentList (...parts: string[]): string[] {
+
+    const result = parts
+    return result
+
+  }
 
 }

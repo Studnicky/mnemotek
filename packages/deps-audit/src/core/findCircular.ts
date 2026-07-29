@@ -1,20 +1,60 @@
 import {relative} from 'node:path'
 
-import type {ModuleGraph} from './scanImports.js'
+import type {ModuleGraphInterface} from '../interfaces/ModuleGraphInterface.js'
 
-export function findCircularImports (root: string, graph: ModuleGraph): readonly string[][] {
+export class FindCircular {
 
-  const cycles: string[][] = []
-  const visited = new Set<string>()
-  const stack: string[] = []
-  const onStack = new Set<string>()
+  public static findCircularImports (root: string, graph: ModuleGraphInterface): string[][] {
 
-  function visit (file: string): void {
+    const cycles: string[][] = []
+    const visited = new Set<string>()
+    const stack: string[] = []
+    const onStack = new Set<string>()
+
+    for (const file of graph.edges.keys()) {
+
+      FindCircular.visit({cycles,
+        file,
+        graph,
+        onStack,
+        root,
+        stack,
+        visited})
+
+    }
+
+    return cycles
+
+  }
+
+  private static visit (context: {cycles: string[][];
+    file: string;
+    graph: ModuleGraphInterface;
+    onStack: Set<string>;
+    root: string;
+    stack: string[];
+    visited: Set<string>;}): void {
+
+    const {cycles, file, graph, onStack, root, stack, visited} = context
 
     if (onStack.has(file)) {
 
       const cycleStart = stack.indexOf(file)
-      cycles.push([...stack.slice(cycleStart), file].map((entry) => relative(root, entry)))
+      const cycleElements = [
+        ...stack.slice(cycleStart),
+        file
+      ]
+      const cyclePath = cycleElements.map((entry) => {
+
+        const relativeEntry = relative(
+          root,
+          entry
+        )
+        return relativeEntry
+
+      })
+
+      cycles.push(cyclePath)
       return
 
     }
@@ -29,9 +69,17 @@ export function findCircularImports (root: string, graph: ModuleGraph): readonly
     stack.push(file)
     onStack.add(file)
 
-    for (const target of graph.edges.get(file) ?? []) {
+    const targets = graph.edges.get(file) ?? []
 
-      visit(target)
+    for (const target of targets) {
+
+      FindCircular.visit({cycles,
+        file: target,
+        graph,
+        onStack,
+        root,
+        stack,
+        visited})
 
     }
 
@@ -39,13 +87,5 @@ export function findCircularImports (root: string, graph: ModuleGraph): readonly
     onStack.delete(file)
 
   }
-
-  for (const file of graph.edges.keys()) {
-
-    visit(file)
-
-  }
-
-  return cycles
 
 }

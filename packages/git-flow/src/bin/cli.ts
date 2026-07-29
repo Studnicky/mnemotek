@@ -2,7 +2,7 @@
 import {MnemotekCli} from '@studnicky/mnemotek'
 import process from 'node:process'
 
-import {createGitFlowApp} from '../core/gitFlowApp.js'
+import {GitFlowApp} from '../core/gitFlowApp.js'
 
-const exitCode = await MnemotekCli.execute(createGitFlowApp())
+const exitCode = await MnemotekCli.execute(GitFlowApp.createGitFlowApp())
 process.exitCode = exitCode
