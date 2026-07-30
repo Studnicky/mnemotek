@@ -5,12 +5,14 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {describe, test} from 'node:test'
 
+import {CleanupFlow} from '../src/core/cleanupFlow.js'
 import {ConventionalCommits} from '../src/core/conventionalCommits.js'
 import {FeatureFlow} from '../src/core/featureFlow.js'
 import {GitFlowApp} from '../src/core/gitFlowApp.js'
 import {GitPrimitives} from '../src/core/gitPrimitives.js'
 import {HotfixFlow} from '../src/core/hotfixFlow.js'
 import {MergeMethodResolver} from '../src/core/mergeMethodResolver.js'
+import {MilestoneFlow} from '../src/core/milestoneFlow.js'
 import {PrTemplateInstaller} from '../src/core/prTemplateInstaller.js'
 import {ReleaseFlow} from '../src/core/releaseFlow.js'
 import {Versioning} from '../src/core/versioning.js'
@@ -407,6 +409,338 @@ void describe(
           assert.equal(
             hotfixResult.newVersion,
             '0.0.1'
+          )
+
+        } finally {
+
+          rmSync(
+            dir,
+            {force: true,
+              recursive: true}
+          )
+
+        }
+
+      }
+    )
+
+    void test(
+      'cleanupFlow: dryRun reports merged branches without deleting them',
+      () => {
+
+        const dir = TestSupport.makeRepository()
+
+        try {
+
+          TestSupport.runGit(
+            dir,
+            TestSupport.toArgumentList(
+              'checkout',
+              '-q',
+              '-b',
+              'feature/done'
+            )
+          )
+          writeFileSync(
+            join(
+              dir,
+              'feature.txt'
+            ),
+            'x\n'
+          )
+          TestSupport.runGit(
+            dir,
+            TestSupport.toArgumentList(
+              'add',
+              '-A'
+            )
+          )
+          TestSupport.runGit(
+            dir,
+            TestSupport.toArgumentList(
+              'commit',
+              '-q',
+              '-m',
+              'feature work'
+            )
+          )
+          TestSupport.runGit(
+            dir,
+            TestSupport.toArgumentList(
+              'checkout',
+              '-q',
+              'develop'
+            )
+          )
+          TestSupport.runGit(
+            dir,
+            TestSupport.toArgumentList(
+              'merge',
+              '-q',
+              '--no-ff',
+              'feature/done',
+              '-m',
+              'merge feature'
+            )
+          )
+
+          const cleanupResult = TestSupport.runIn(
+            dir,
+            () => {
+
+              const result = CleanupFlow.cleanupFlow({dryRun: true})
+              return result
+
+            }
+          )
+
+          assert.equal(
+            cleanupResult.dryRun,
+            true
+          )
+          assert.ok(cleanupResult.deleted.includes('feature/done'))
+
+          const branches = execFileSync(
+            'git',
+            TestSupport.toArgumentList('branch'),
+            {cwd: dir,
+              encoding: 'utf8'}
+          )
+          assert.match(
+            branches,
+            GIT_FLOW_EXPECTED_PATTERNS.BRANCH_FEATURE_DONE
+          )
+
+        } finally {
+
+          rmSync(
+            dir,
+            {force: true,
+              recursive: true}
+          )
+
+        }
+
+      }
+    )
+
+    void test(
+      'cleanupFlow: deletes merged branches, excluding protected and current branches',
+      () => {
+
+        const dir = TestSupport.makeRepository()
+
+        try {
+
+          TestSupport.runGit(
+            dir,
+            TestSupport.toArgumentList(
+              'checkout',
+              '-q',
+              '-b',
+              'feature/done'
+            )
+          )
+          writeFileSync(
+            join(
+              dir,
+              'feature.txt'
+            ),
+            'x\n'
+          )
+          TestSupport.runGit(
+            dir,
+            TestSupport.toArgumentList(
+              'add',
+              '-A'
+            )
+          )
+          TestSupport.runGit(
+            dir,
+            TestSupport.toArgumentList(
+              'commit',
+              '-q',
+              '-m',
+              'feature work'
+            )
+          )
+          TestSupport.runGit(
+            dir,
+            TestSupport.toArgumentList(
+              'checkout',
+              '-q',
+              'develop'
+            )
+          )
+          TestSupport.runGit(
+            dir,
+            TestSupport.toArgumentList(
+              'merge',
+              '-q',
+              '--no-ff',
+              'feature/done',
+              '-m',
+              'merge feature'
+            )
+          )
+
+          const cleanupResult = TestSupport.runIn(
+            dir,
+            () => {
+
+              const result = CleanupFlow.cleanupFlow({})
+              return result
+
+            }
+          )
+
+          assert.equal(
+            cleanupResult.dryRun,
+            false
+          )
+          assert.deepEqual(
+            cleanupResult.deleted,
+            ['feature/done']
+          )
+
+          const branches = execFileSync(
+            'git',
+            TestSupport.toArgumentList('branch'),
+            {cwd: dir,
+              encoding: 'utf8'}
+          )
+          assert.doesNotMatch(
+            branches,
+            GIT_FLOW_EXPECTED_PATTERNS.BRANCH_FEATURE_DONE
+          )
+          assert.match(
+            branches,
+            GIT_FLOW_EXPECTED_PATTERNS.BRANCH_DEVELOP
+          )
+
+        } finally {
+
+          rmSync(
+            dir,
+            {force: true,
+              recursive: true}
+          )
+
+        }
+
+      }
+    )
+
+    void test(
+      'milestoneFlow: commits staged changes with the default wip message',
+      () => {
+
+        const dir = TestSupport.makeRepository()
+
+        try {
+
+          writeFileSync(
+            join(
+              dir,
+              'scratch.txt'
+            ),
+            'wip\n'
+          )
+
+          const milestoneResult = TestSupport.runIn(
+            dir,
+            () => {
+
+              const result = MilestoneFlow.milestoneFlow({})
+              return result
+
+            }
+          )
+
+          assert.equal(
+            milestoneResult.committed,
+            true
+          )
+          assert.equal(
+            milestoneResult.message,
+            'wip: checkpoint'
+          )
+
+          const status = execFileSync(
+            'git',
+            TestSupport.toArgumentList(
+              'status',
+              '--porcelain'
+            ),
+            {cwd: dir,
+              encoding: 'utf8'}
+          )
+          assert.equal(
+            status.trim(),
+            ''
+          )
+
+        } finally {
+
+          rmSync(
+            dir,
+            {force: true,
+              recursive: true}
+          )
+
+        }
+
+      }
+    )
+
+    void test(
+      'milestoneFlow: uses a custom message and reports committed:false when there is nothing to commit',
+      () => {
+
+        const dir = TestSupport.makeRepository()
+
+        try {
+
+          writeFileSync(
+            join(
+              dir,
+              'scratch.txt'
+            ),
+            'wip\n'
+          )
+
+          const firstResult = TestSupport.runIn(
+            dir,
+            () => {
+
+              const result = MilestoneFlow.milestoneFlow({message: 'in progress'})
+              return result
+
+            }
+          )
+
+          assert.equal(
+            firstResult.committed,
+            true
+          )
+          assert.equal(
+            firstResult.message,
+            'wip: in progress'
+          )
+
+          const secondResult = TestSupport.runIn(
+            dir,
+            () => {
+
+              const result = MilestoneFlow.milestoneFlow({message: 'in progress'})
+              return result
+
+            }
+          )
+
+          assert.equal(
+            secondResult.committed,
+            false
           )
 
         } finally {
@@ -2216,10 +2550,12 @@ void describe(
         assert.deepEqual(
           names,
           [
+            'cleanup',
             'commit-check',
             'commit-type',
             'feature',
             'hotfix',
+            'milestone',
             'release',
             'sync'
           ]

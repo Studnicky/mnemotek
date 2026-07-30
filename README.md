@@ -98,9 +98,14 @@ This repo is a pnpm workspace. The root `@studnicky/mnemotek` is the library; ev
 
 | Package | What it does |
 |---|---|
-| [`@studnicky/git-flow`](packages/git-flow) | Feature/release/hotfix branch orchestration, Conventional Commits validation, branch-derived commit type suggestion |
+| [`@studnicky/memoria`](packages/memoria) | Agent-native dotfile manager: templated apply, drift status, seed-once files, dry-run verify, remote bootstrap, and a bundled snippet catalog |
+| [`@studnicky/git-flow`](packages/git-flow) | Feature/release/hotfix/cleanup branch orchestration, Conventional Commits validation, branch-derived commit type suggestion, WIP checkpoint commits |
+| [`@studnicky/git-hooks`](packages/git-hooks) | Installs a `core.hooksPath` dispatcher plus bundled protected-branch, large-file, and secret-scan pre-commit checks |
+| [`@studnicky/git-stack`](packages/git-stack) | Thin passthrough to the `gh-stack` stacked-PR GitHub CLI extension |
+| [`@studnicky/github-release`](packages/github-release) | Create a GitHub release via `gh release create`, with auto-generated or explicit notes |
+| [`@studnicky/labels-sync`](packages/labels-sync) | Pull/push GitHub repository labels against a tracked JSON file, add-only and dry-run by default |
 | [`@studnicky/redactor`](packages/redactor) | Strip ANSI/spinner noise from command output, track byte/token savings |
-| [`@studnicky/config-standards`](packages/config-standards) | Check/fix `.gitignore` and `package.json` against a small built-in standards set |
+| [`@studnicky/config-standards`](packages/config-standards) | Check/fix `.gitignore`, `package.json`, `.editorconfig`, `.vscode` config, Prettier config, version pins, and more against a small built-in standards set |
 | [`@studnicky/deps-audit`](packages/deps-audit) | Static import-graph analysis: circular imports, orphan modules, unused dependencies |
 | [`@studnicky/inspect`](packages/inspect) | Run a project's own `tsc`/`eslint` and report structured pass/fail results |
 

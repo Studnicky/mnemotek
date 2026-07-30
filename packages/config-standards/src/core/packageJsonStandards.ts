@@ -1,8 +1,9 @@
-import {existsSync, readFileSync, writeFileSync} from 'node:fs'
+import {existsSync, readFileSync} from 'node:fs'
 import {join} from 'node:path'
 
 import type {PackageJsonFixResultEntity, StandardsCheckResultEntity} from '../entities/index.js'
 
+import {AtomicWrite} from './atomicWrite.js'
 import {AUTO_FILLABLE_PACKAGE_DEFAULTS, REQUIRED_PACKAGE_FIELDS} from './constants/ConfigStandardsConstants.js'
 
 export class PackageJsonStandards {
@@ -78,7 +79,7 @@ export class PackageJsonStandards {
 
     if (added.length > 0) {
 
-      writeFileSync(
+      AtomicWrite.write(
         filePath,
         `${JSON.stringify(
           packageData,

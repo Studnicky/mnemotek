@@ -2,31 +2,26 @@
 
 <!-- What's changing, in 1-3 sentences. Present tense, verb-first. -->
 
-## Type of Change
-
 <!--
-Pick the ONE alert that matches this change, delete the other five. The
-alert type IS the signal — a reviewer should be able to gauge what kind of
-change this is from color/icon alone, before reading a word of prose.
+Pick the ONE badge that matches this change, delete the other five. A badge,
+not a native GitHub alert — alert headers are fixed to exactly
+"Note"/"Tip"/"Important"/"Warning"/"Caution" and can't be relabeled, which
+reads redundant here ("Tip: New feature"). The badge's own label IS the
+signal — a reviewer should be able to gauge what kind of change this is from
+color alone, before reading a word of prose.
 -->
 
-> [!CAUTION]
-> **Breaking change**
+![Breaking Change](https://img.shields.io/badge/Breaking%20Change-red)
 
-> [!IMPORTANT]
-> **Bug fix**
+![Bug Fix](https://img.shields.io/badge/Bug%20Fix-orange)
 
-> [!TIP]
-> **New feature**
+![New Feature](https://img.shields.io/badge/New%20Feature-brightgreen)
 
-> [!NOTE]
-> **Refactor**
+![Refactor](https://img.shields.io/badge/Refactor-blue)
 
-> [!NOTE]
-> **Documentation**
+![Documentation](https://img.shields.io/badge/Documentation-lightgrey)
 
-> [!NOTE]
-> **CI/tooling**
+![CI/Tooling](https://img.shields.io/badge/CI%2FTooling-lightgrey)
 
 ## Why
 
@@ -40,15 +35,15 @@ Not a restated summary — say what a reader can't get from the diff alone.
 ## Risks & Review Notes
 
 <!--
-Pick the alert level that matches actual risk, delete the others, then say
-what could break, what a reviewer should specifically check, and the
-rollback path — don't just name the severity and stop there.
-- [!CAUTION] — high risk: hard to reverse, touches auth/data/money/prod config
-- [!WARNING] — moderate risk: needs a careful read, but recoverable
-- [!NOTE] — low risk: routine, well-tested, easy rollback
+Always [!CAUTION] — risk deserves the reviewer's attention regardless of how
+low-stakes the change actually is; don't downgrade the alert to match your
+own risk assessment. Say what could break, what a reviewer should
+specifically check, and the rollback path in the prose — don't just leave
+the alert to speak for itself. Write "None." if genuinely low-risk; the
+alert still stays red.
 -->
 
-> [!NOTE]
+> [!CAUTION]
 > None.
 
 ## Testing
@@ -114,8 +109,14 @@ This is a gate, not a formality — don't check anything from habit.
 as real hyperlinks when possible. Omit if none. -->
 
 <!--
-Optional, encouraged when an AI agent authored this PR:
-quippy one liner, in the voice of a scrappy, unimpressed street-level hacker
-who's seen enough chrome and wetware not to be dazzled by either, commenting on
-as a passing note or review responding to the fix/change delivered in this PR.
+Optional, encouraged when an AI agent authored this PR: a quippy one liner,
+in the voice of a scrappy, unimpressed street-level hacker who's seen enough
+chrome and wetware not to be dazzled by either, that actually describes what
+this PR does — not a generic mood-setter. Attach it as a [!NOTE] alert (same
+mechanism as Risks above), not plain text — it's a passing note/review
+comment, not body prose. Delete this comment block and the
+example below if it doesn't fit the change.
 -->
+
+> [!NOTE]
+> Quip goes here.

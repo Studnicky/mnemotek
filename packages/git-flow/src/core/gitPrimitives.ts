@@ -1,4 +1,4 @@
-import {existsSync, unlinkSync, writeFileSync} from 'node:fs'
+import {existsSync, readFileSync, unlinkSync, writeFileSync} from 'node:fs'
 import {join} from 'node:path'
 import process from 'node:process'
 
@@ -14,7 +14,29 @@ export class GitPrimitives {
 
     const path = GitPrimitives.lockFilePath()
 
-    if (existsSync(path)) {
+    try {
+
+      writeFileSync(
+        path,
+        String(process.pid),
+        {flag: 'wx'}
+      )
+      return
+
+    } catch (error: unknown) {
+
+      if (!GitPrimitives.isErrorWithCode(
+        error,
+        'EEXIST'
+      )) {
+
+        throw error
+
+      }
+
+    }
+
+    if (!GitPrimitives.reclaimStaleLock(path)) {
 
       throw new Error(`git-flow-tool is already running in this repository (lock file ${path} exists). Wait for it to finish, or remove the lock file if a prior run crashed without cleaning up.`)
 
@@ -22,7 +44,8 @@ export class GitPrimitives {
 
     writeFileSync(
       path,
-      String(process.pid)
+      String(process.pid),
+      {flag: 'wx'}
     )
 
   }
@@ -408,6 +431,12 @@ export class GitPrimitives {
 
   }
 
+  private static isErrorWithCode (error: unknown, code: string): boolean {
+
+    return error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === code
+
+  }
+
   private static lockFilePath (): string {
 
     const result = join(
@@ -469,6 +498,45 @@ export class GitPrimitives {
         throw new Error(`Push to ${branch} was rejected again after a fast-forward pull. Resolve manually.`)
 
       }
+
+    }
+
+  }
+
+  private static reclaimStaleLock (path: string): boolean {
+
+    const pid = Number(readFileSync(
+      path,
+      'utf8'
+    ).trim())
+
+    if (!Number.isInteger(pid)) {
+
+      return false
+
+    }
+
+    try {
+
+      process.kill(
+        pid,
+        0
+      )
+      return false
+
+    } catch (error: unknown) {
+
+      if (!GitPrimitives.isErrorWithCode(
+        error,
+        'ESRCH'
+      )) {
+
+        return false
+
+      }
+
+      unlinkSync(path)
+      return true
 
     }
 
