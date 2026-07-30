@@ -1,8 +1,9 @@
-import {appendFileSync, existsSync, readFileSync, writeFileSync} from 'node:fs'
+import {existsSync, readFileSync} from 'node:fs'
 import {join} from 'node:path'
 
 import type {GitignoreFixResultEntity, StandardsCheckResultEntity} from '../entities/index.js'
 
+import {AtomicWrite} from './atomicWrite.js'
 import {REQUIRED_GITIGNORE_LINES} from './constants/ConfigStandardsConstants.js'
 
 export class GitignoreStandards {
@@ -55,7 +56,7 @@ export class GitignoreStandards {
 
     if (!existsSync(filePath)) {
 
-      writeFileSync(
+      AtomicWrite.write(
         filePath,
         addition
       )
@@ -69,9 +70,9 @@ export class GitignoreStandards {
     )
     const needsLeadingNewline = existing.length > 0 && !existing.endsWith('\n')
 
-    appendFileSync(
+    AtomicWrite.write(
       filePath,
-      `${needsLeadingNewline
+      `${existing}${needsLeadingNewline
         ? '\n'
         : ''}${addition}`
     )

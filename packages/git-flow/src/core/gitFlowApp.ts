@@ -1,14 +1,16 @@
 import {Mnemotek, MnemotekAppFactory} from '@studnicky/mnemotek'
 import {readFileSync} from 'node:fs'
 
-import type {CommitMessageValidationEntity, FeatureFlowResultEntity, HotfixFlowResultEntity, ReleaseFlowResultEntity, SyncFlowResultEntity, VersionBumpEntity} from '../entities/index.js'
+import type {CleanupFlowResultEntity, CommitMessageValidationEntity, FeatureFlowResultEntity, HotfixFlowResultEntity, MilestoneFlowResultEntity, ReleaseFlowResultEntity, SyncFlowResultEntity, VersionBumpEntity} from '../entities/index.js'
 
 import {BranchTypeEntity, ConventionalCommitTypeEntity} from '../entities/index.js'
+import {CleanupFlow} from './cleanupFlow.js'
 import {GIT_FLOW_APP_SCHEMA} from './constants/GitFlowAppConstants.js'
 import {ConventionalCommits} from './conventionalCommits.js'
 import {FeatureFlow} from './featureFlow.js'
 import {GitPrimitives} from './gitPrimitives.js'
 import {HotfixFlow} from './hotfixFlow.js'
+import {MilestoneFlow} from './milestoneFlow.js'
 import {ReleaseFlow} from './releaseFlow.js'
 import {SyncFlow} from './syncFlow.js'
 
@@ -100,6 +102,32 @@ export class GitFlowApp {
         }
       },
       {
+        description: 'Delete local branches already merged into the current branch (excluding main/master/develop/development and the current branch itself), then run git gc.',
+        name: 'cleanup',
+        runner: GitFlowApp.cleanupRunner,
+        schema: {
+          additionalProperties: false,
+          properties: {
+            dryRun: {description: 'Report which branches would be deleted without deleting them or running git gc.',
+              type: 'boolean'}
+          },
+          type: 'object'
+        }
+      },
+      {
+        description: 'Stage everything and create a WIP checkpoint commit.',
+        name: 'milestone',
+        runner: GitFlowApp.milestoneRunner,
+        schema: {
+          additionalProperties: false,
+          properties: {
+            message: {description: 'Checkpoint message, appended after "wip: ". Defaults to "wip: checkpoint" when omitted.',
+              type: 'string'}
+          },
+          type: 'object'
+        }
+      },
+      {
         description: 'Validate a commit message against Conventional Commits; throws on an invalid message unless --lenient. Reads --message directly or --file (as git\'s commit-msg hook does).',
         name: 'commit-check',
         runner: GitFlowApp.commitCheckRunner,
@@ -133,6 +161,18 @@ export class GitFlowApp {
       }
     )
     return app
+
+  }
+
+  private static readonly cleanupRunner = (payload: Record<string, unknown>): CleanupFlowResultEntity.Type => {
+
+    const result = GitPrimitives.withLock(() => {
+
+      const cleanupFlowResult = CleanupFlow.cleanupFlow({dryRun: payload.dryRun === true})
+      return cleanupFlowResult
+
+    })
+    return result
 
   }
 
@@ -230,6 +270,22 @@ export class GitFlowApp {
 
       const hotfixFlowResult = HotfixFlow.hotfixFlow(GitFlowApp.extractCommonFlowPayload(payload))
       return hotfixFlowResult
+
+    })
+    return result
+
+  }
+
+  private static readonly milestoneRunner = (payload: Record<string, unknown>): MilestoneFlowResultEntity.Type => {
+
+    const result = GitPrimitives.withLock(() => {
+
+      const milestoneFlowResult = MilestoneFlow.milestoneFlow({
+        message: typeof payload.message === 'string'
+          ? payload.message
+          : undefined
+      })
+      return milestoneFlowResult
 
     })
     return result

@@ -181,7 +181,177 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  packages/git-hooks:
+    dependencies:
+      '@studnicky/json':
+        specifier: ^9.2.0
+        version: 9.2.0
+      '@studnicky/mnemotek':
+        specifier: workspace:*
+        version: link:../..
+      commander:
+        specifier: ^14.0.0
+        version: 14.0.3
+      enquirer:
+        specifier: ^2.4.1
+        version: 2.4.1
+    devDependencies:
+      '@types/node':
+        specifier: ^26.1.1
+        version: 26.1.1
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+      eslint:
+        specifier: ^10.8.0
+        version: 10.8.0
+      json-schema-to-ts:
+        specifier: ^3.1.1
+        version: 3.1.1
+      tsx:
+        specifier: ^4.23.1
+        version: 4.23.1
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages/git-stack:
+    dependencies:
+      '@studnicky/json':
+        specifier: ^9.2.0
+        version: 9.2.0
+      '@studnicky/mnemotek':
+        specifier: workspace:*
+        version: link:../..
+      commander:
+        specifier: ^14.0.0
+        version: 14.0.3
+      enquirer:
+        specifier: ^2.4.1
+        version: 2.4.1
+    devDependencies:
+      '@types/node':
+        specifier: ^26.1.1
+        version: 26.1.1
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+      eslint:
+        specifier: ^10.8.0
+        version: 10.8.0
+      json-schema-to-ts:
+        specifier: ^3.1.1
+        version: 3.1.1
+      tsx:
+        specifier: ^4.23.1
+        version: 4.23.1
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages/github-release:
+    dependencies:
+      '@studnicky/json':
+        specifier: ^9.2.0
+        version: 9.2.0
+      '@studnicky/mnemotek':
+        specifier: workspace:*
+        version: link:../..
+      commander:
+        specifier: ^14.0.0
+        version: 14.0.3
+      enquirer:
+        specifier: ^2.4.1
+        version: 2.4.1
+    devDependencies:
+      '@types/node':
+        specifier: ^26.1.1
+        version: 26.1.1
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+      eslint:
+        specifier: ^10.8.0
+        version: 10.8.0
+      json-schema-to-ts:
+        specifier: ^3.1.1
+        version: 3.1.1
+      tsx:
+        specifier: ^4.23.1
+        version: 4.23.1
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
   packages/inspect:
+    dependencies:
+      '@studnicky/json':
+        specifier: ^9.2.0
+        version: 9.2.0
+      '@studnicky/mnemotek':
+        specifier: workspace:*
+        version: link:../..
+      commander:
+        specifier: ^14.0.0
+        version: 14.0.3
+      enquirer:
+        specifier: ^2.4.1
+        version: 2.4.1
+    devDependencies:
+      '@types/node':
+        specifier: ^26.1.1
+        version: 26.1.1
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+      eslint:
+        specifier: ^10.8.0
+        version: 10.8.0
+      json-schema-to-ts:
+        specifier: ^3.1.1
+        version: 3.1.1
+      tsx:
+        specifier: ^4.23.1
+        version: 4.23.1
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages/labels-sync:
+    dependencies:
+      '@studnicky/json':
+        specifier: ^9.2.0
+        version: 9.2.0
+      '@studnicky/mnemotek':
+        specifier: workspace:*
+        version: link:../..
+      commander:
+        specifier: ^14.0.0
+        version: 14.0.3
+      enquirer:
+        specifier: ^2.4.1
+        version: 2.4.1
+    devDependencies:
+      '@types/node':
+        specifier: ^26.1.1
+        version: 26.1.1
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+      eslint:
+        specifier: ^10.8.0
+        version: 10.8.0
+      json-schema-to-ts:
+        specifier: ^3.1.1
+        version: 3.1.1
+      tsx:
+        specifier: ^4.23.1
+        version: 4.23.1
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages/memoria:
     dependencies:
       '@studnicky/json':
         specifier: ^9.2.0

@@ -170,5 +170,95 @@ void describe(
       }
     )
 
+    void test(
+      'check: runs every rule and returns every key, networked defaulting to false',
+      async () => {
+
+        const dir = mkdtempSync(join(
+          tmpdir(),
+          'config-standards-test-'
+        ))
+
+        try {
+
+          const app = ConfigStandardsApp.createConfigStandardsApp()
+          const result = await app.run(
+            'check',
+            {root: dir}
+          ) as Record<string, unknown>
+
+          assert.deepEqual(
+            Object.keys(result).sort(),
+            [
+              'codeowners',
+              'devcontainer',
+              'editorconfig',
+              'envcheck',
+              'gitignore',
+              'issueTemplates',
+              'packageJson',
+              'prettier',
+              'styleDrift',
+              'templateSync',
+              'versionPin',
+              'vscode'
+            ]
+          )
+
+        } finally {
+
+          rmSync(
+            dir,
+            {force: true,
+              recursive: true}
+          )
+
+        }
+
+      }
+    )
+
+    void test(
+      'fix: runs every fixable rule and returns every fix key',
+      async () => {
+
+        const dir = mkdtempSync(join(
+          tmpdir(),
+          'config-standards-test-'
+        ))
+
+        try {
+
+          const app = ConfigStandardsApp.createConfigStandardsApp()
+          const result = await app.run(
+            'fix',
+            {root: dir}
+          ) as Record<string, unknown>
+
+          assert.deepEqual(
+            Object.keys(result).sort(),
+            [
+              'editorconfig',
+              'gitignore',
+              'packageJson',
+              'prettier',
+              'versionPin',
+              'vscode'
+            ]
+          )
+
+        } finally {
+
+          rmSync(
+            dir,
+            {force: true,
+              recursive: true}
+          )
+
+        }
+
+      }
+    )
+
   }
 )

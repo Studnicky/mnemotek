@@ -1,0 +1,17 @@
+import type {ValidateFunction} from 'ajv'
+import type {FromSchema, JSONSchema} from 'json-schema-to-ts'
+
+import {SchemaValidator} from '@studnicky/json'
+
+export namespace StackResultEntity {
+  export const Schema = {
+    additionalProperties: false,
+    properties: {
+      output: {type: 'string'}
+    },
+    required: ['output'],
+    type: 'object'
+  } as const satisfies JSONSchema
+  export type Type = FromSchema<typeof Schema>
+  export const validate: ValidateFunction<Type> = SchemaValidator.compile<Type>(Schema)
+}

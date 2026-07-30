@@ -1,4 +1,6 @@
 export const GIT_FLOW_EXPECTED_PATTERNS = {
+  BRANCH_DEVELOP: /develop/u,
+  BRANCH_FEATURE_DONE: /feature\/done/u,
   INVALID_COMMIT_MESSAGE: /Invalid commit message/u,
   LOCK_CONFLICT: /already running|lock file/u,
   MERGE_CONFLICT: /merge/iu,
