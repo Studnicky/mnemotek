@@ -4,7 +4,6 @@ import {join} from 'node:path'
 import type {CatalogResolvedEntryInterface} from '../../interfaces/CatalogResolvedEntryInterface.js'
 
 import {AtomicWrite} from '../atomicWrite.js'
-import {CATALOG_WRITER_PATTERNS} from './constants/CatalogWriterConstants.js'
 
 /** Mutation accumulator for a single applyGitignore run — an internal implementation detail, not a public contract. */
 class GitignoreMergeState {
@@ -118,10 +117,7 @@ export class CatalogWriter {
 
       AtomicWrite.write(
         gitignorePath,
-        `${state.outputLines.join('\n').replace(
-          CATALOG_WRITER_PATTERNS.TRAILING_BLANK_LINES,
-          ''
-        )}\n`
+        `${CatalogWriter.stripTrailingNewlines(state.outputLines.join('\n'))}\n`
       )
 
     }
@@ -167,6 +163,28 @@ export class CatalogWriter {
       state.added.push(line)
 
     }
+
+  }
+
+  /**
+   * Linear character scan, not a regex — CodeQL flags `/\n+$/`-style
+   * patterns applied to library-derived content as a potential polynomial
+   * ReDoS on pathological input. A scan has no backtracking to blow up.
+   */
+  private static stripTrailingNewlines (value: string): string {
+
+    let end = value.length
+
+    while (end > 0 && value[end - 1] === '\n') {
+
+      end -= 1
+
+    }
+
+    return value.slice(
+      0,
+      end
+    )
 
   }
 
